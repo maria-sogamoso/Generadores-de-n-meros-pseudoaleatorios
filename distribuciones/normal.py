@@ -47,9 +47,7 @@ class GeneradorDistribucionNormal:
         self.mu = mu
         self.sigma = sigma
 
-    # ------------------------------------------------------------------
-    # Método público principal
-    # ------------------------------------------------------------------
+    # Método principal
 
     def generar(self, uniformes_base: list[float]) -> list[float]:
         """Genera una secuencia N(mu, sigma^2) a partir de uniformes base.

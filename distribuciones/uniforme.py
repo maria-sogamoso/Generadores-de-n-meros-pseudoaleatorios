@@ -34,7 +34,7 @@ class GeneradorDistribucionUniforme:
         self.a = a
         self.b = b
 
-    # Método público principal
+    # Método principal
 
     def generar(self, uniformes_base: list[float]) -> list[float]:
         """Genera una muestra U(a, b) aplicando transformada inversa.
