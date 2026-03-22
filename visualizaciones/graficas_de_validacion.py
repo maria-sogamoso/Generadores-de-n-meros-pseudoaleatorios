@@ -3,7 +3,7 @@ from collections import Counter
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.stats import ksone, norm  # type: ignore
+from scipy.stats import chi2, ksone, norm  # type: ignore
 
 
 def graficar_kolmogorov_smirnov(numeros_aleatorios, alpha=0.05):
@@ -579,8 +579,94 @@ def graficar_prueba_varianza(
     }
 
 
+def graficar_prueba_chi_cuadrado(numeros_aleatorios, k=10, alpha=0.05):
+    """
+    Grafica frecuencias observadas vs esperadas para evaluar uniformidad
+    mediante la prueba Chi-cuadrado.
+
+    Parameters
+    ----------
+    numeros_aleatorios : list[float]
+        Muestra de numeros pseudoaleatorios en [0, 1).
+    k : int, optional
+        Cantidad de intervalos iguales para particionar [0, 1).
+    alpha : float, optional
+        Nivel de significancia para calcular el valor critico.
+
+    Returns
+    -------
+    dict
+        Resumen con chi_calculado, chi_critico y aceptada.
+    """
+    if not numeros_aleatorios:
+        raise ValueError("La lista de numeros no puede estar vacia.")
+
+    datos = np.asarray(numeros_aleatorios, dtype=float)
+
+    if np.any((datos < 0) | (datos >= 1)):
+        raise ValueError("Todos los valores deben estar en el intervalo [0, 1).")
+
+    n = len(datos)
+    bins = np.linspace(0, 1, k + 1)
+
+    frecuencias_observadas, _ = np.histogram(datos, bins=bins)
+    frecuencias_esperadas = np.full(k, n / k)
+
+    chi_calculado = float(
+        np.sum(
+            ((frecuencias_observadas - frecuencias_esperadas) ** 2)
+            / frecuencias_esperadas
+        )
+    )
+    chi_critico = float(chi2.ppf(1 - alpha, df=k - 1))
+    aceptada = chi_calculado < chi_critico
+
+    etiquetas = [f"{bins[i]:.1f}-{bins[i + 1]:.1f}" for i in range(k)]
+    x = np.arange(k)
+    ancho = 0.38
+
+    plt.figure(figsize=(12, 6))
+    plt.bar(
+        x - ancho / 2,
+        frecuencias_observadas,
+        width=ancho,
+        color="steelblue",
+        edgecolor="black",
+        label="Observadas",
+    )
+    plt.bar(
+        x + ancho / 2,
+        frecuencias_esperadas,
+        width=ancho,
+        color="coral",
+        edgecolor="black",
+        label="Esperadas",
+    )
+
+    plt.xticks(x, etiquetas, rotation=20)
+    plt.xlabel("Intervalos")
+    plt.ylabel("Frecuencia")
+    plt.title("Prueba Chi-Cuadrado: Observadas vs Esperadas")
+    plt.grid(axis="y", alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+    print("\n--- Resumen Chi-Cuadrado ---")
+    print(f"Chi calculado: {chi_calculado:.5f}")
+    print(f"Chi critico: {chi_critico:.5f}")
+    print(f"Resultado: {'Aceptada' if aceptada else 'Rechazada'}")
+
+    return {
+        "chi_calculado": chi_calculado,
+        "chi_critico": chi_critico,
+        "aceptada": aceptada,
+    }
+
+
 __all__ = [
     "graficar_kolmogorov_smirnov",
+    "graficar_prueba_chi_cuadrado",
     "graficar_prueba_poker",
     "graficar_prueba_rachas",
     "graficar_prueba_medias",
