@@ -410,6 +410,7 @@ def graficar_prueba_medias(sample_means, ci_lower, ci_upper, theoretical_mean=0.
         saltos = max(1, len(experiment_ids) // 10)
         xticks = np.concatenate(([0], experiment_ids[::saltos]))
     ax.set_xticks(xticks)
+    ax.set_xlim(-1.2, len(experiment_ids) + 2.0)
 
     ax.legend()
     plt.tight_layout()
@@ -436,10 +437,51 @@ def graficar_prueba_varianza(
     sample_variances, ci_lower, ci_upper, theoretical_variance=1 / 12, alpha=0.05
 ):
     """
-    Grafico unico para prueba de varianza:
-    - Distribucion de varianzas (nube de puntos)
-    - Intervalos de confianza por experimento
-    - Varianza teorica esperada
+    Grafica la prueba de varianza en un solo eje para evaluar si la muestra
+    de numeros pseudoaleatorios es consistente con una distribucion uniforme
+    en [0, 1], cuya varianza teorica es 1/12.
+
+    Metodo
+    ------
+    1. Se parte de varianzas muestrales ya calculadas (una por experimento
+       o corrida).
+    2. Para cada varianza se recibe su intervalo de confianza [LI, LS].
+    3. Se verifica la condicion de aceptacion global:
+       la varianza teorica debe quedar dentro del intervalo de confianza de
+       cada experimento.
+    4. Se construye un grafico unico con tres capas:
+       - Distribucion de varianzas (nube de puntos en x=0).
+       - Varianzas con barras de error (intervalos por experimento).
+       - Linea horizontal con la varianza teorica esperada.
+
+    Interpretacion
+    --------------
+    - Si las varianzas se concentran alrededor de 1/12 y la linea teorica
+      cruza los intervalos de confianza, el comportamiento es consistente con
+      una buena calidad de aleatoriedad respecto a la dispersion.
+    - Si hay desplazamiento sistematico de las varianzas o intervalos que no
+      contienen la varianza teorica, existe evidencia de sesgo en el
+      generador.
+
+    Parameters
+    ----------
+    sample_variances : list[float] | np.ndarray
+        Varianzas muestrales por experimento.
+    ci_lower : list[float] | np.ndarray
+        Limites inferiores de los intervalos de confianza.
+    ci_upper : list[float] | np.ndarray
+        Limites superiores de los intervalos de confianza.
+    theoretical_variance : float, optional
+        Varianza teorica esperada. Para U(0,1), theoretical_variance = 1/12.
+    alpha : float, optional
+        Nivel de significancia asociado a los intervalos de confianza
+        construidos externamente.
+
+    Returns
+    -------
+    dict
+        Resumen con varianza calculada, varianza teorica, limites promedio e
+        indicador de aceptacion global.
     """
     sample_variances = np.asarray(sample_variances, dtype=float)
     ci_lower = np.asarray(ci_lower, dtype=float)
@@ -472,7 +514,8 @@ def graficar_prueba_varianza(
         alpha=0.35,
         color="steelblue",
         edgecolor="none",
-        label="Distribucion de varianzas",
+        label="Distribucion de varianzas (x=0)",
+        zorder=3,
     )
 
     # 2) Intervalos de confianza por experimento
@@ -486,7 +529,8 @@ def graficar_prueba_varianza(
         elinewidth=1.4,
         capsize=4,
         markersize=5,
-        label="Varianza e IC",
+        label="Varianza muestral e IC",
+        zorder=2,
     )
 
     # 3) Varianza teorica esperada
@@ -495,10 +539,10 @@ def graficar_prueba_varianza(
         color="crimson",
         linestyle="--",
         linewidth=2,
-        label=f"Varianza teorica = {theoretical_variance:.6f}",
+        label=f"Varianza teorica esperada = {theoretical_variance:.6f}",
     )
 
-    ax.set_title("Prueba de Varianza - Grafico Unico")
+    ax.set_title("Prueba de Varianza")
     ax.set_xlabel("Experimento (x=0 muestra distribucion)")
     ax.set_ylabel("Varianza")
     ax.grid(alpha=0.3)
@@ -510,11 +554,10 @@ def graficar_prueba_varianza(
         saltos = max(1, len(experiment_ids) // 10)
         xticks = np.concatenate(([0], experiment_ids[::saltos]))
     ax.set_xticks(xticks)
+    ax.set_xlim(-1.2, len(experiment_ids) + 2.0)
 
     ax.legend()
     plt.tight_layout()
-    plt.show()
-
     print("\n--- Resumen Varianza ---")
     print(f"Varianza calculada (promedio): {np.mean(sample_variances):.8f}")
     print(f"Varianza teorica: {theoretical_variance:.8f}")
@@ -522,6 +565,10 @@ def graficar_prueba_varianza(
         f"IC promedio: [{np.mean(ci_lower):.8f}, {np.mean(ci_upper):.8f}]"
     )
     print(f"Resultado: {'Aceptada' if aceptada else 'Rechazada'}")
+    
+    plt.show()
+
+    
 
     return {
         "varianza_calculada": float(np.mean(sample_variances)),
