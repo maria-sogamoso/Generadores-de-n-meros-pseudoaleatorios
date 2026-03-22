@@ -299,28 +299,49 @@ def graficar_prueba_rachas(numeros_aleatorios, alpha=0.05):
 
 def graficar_prueba_medias(sample_means, ci_lower, ci_upper, theoretical_mean=0.5, alpha=0.05):
     """
-    Grafica la prueba de medias mostrando:
-    1) Distribucion de medias calculadas.
-    2) Intervalos de confianza por experimento.
-    3) Media teorica esperada.
+    Grafica la prueba de medias en un solo eje para evaluar si la muestra
+    de numeros pseudoaleatorios es consistente con una distribucion uniforme
+    en [0, 1], cuya media teorica es 0.5.
+
+    Metodo
+    ------
+    1. Se parte de medias muestrales ya calculadas (una por experimento o corrida).
+    2. Para cada media se recibe su intervalo de confianza [LI, LS].
+    3. Se verifica la condicion de aceptacion global:
+       la media teorica debe quedar dentro del intervalo de confianza de
+       cada experimento.
+    4. Se construye un grafico unico con tres capas:
+       - Distribucion de medias (nube de puntos en x=0).
+       - Medias con barras de error (intervalos por experimento).
+       - Linea horizontal con la media teorica esperada.
+
+    Interpretacion
+    --------------
+    - Si los puntos se concentran alrededor de 0.5 y la linea teorica cruza
+      los intervalos de confianza, el comportamiento es consistente con una
+      buena calidad de aleatoriedad respecto a la media.
+    - Si hay desplazamiento sistematico de las medias o intervalos que no
+      contienen la media teorica, existe evidencia de sesgo en el generador.
 
     Parameters
     ----------
     sample_means : list[float] | np.ndarray
-        Medias calculadas en cada corrida/experimento.
+        Medias muestrales por experimento.
     ci_lower : list[float] | np.ndarray
-        Limite inferior del intervalo de confianza por experimento.
+        Limites inferiores de los intervalos de confianza.
     ci_upper : list[float] | np.ndarray
-        Limite superior del intervalo de confianza por experimento.
+        Limites superiores de los intervalos de confianza.
     theoretical_mean : float, optional
-        Media teorica esperada. Para U(0,1) es 0.5.
+        Media teorica esperada. Para U(0,1), theoretical_mean = 0.5.
     alpha : float, optional
-        Nivel de significancia para el intervalo de confianza.
+        Nivel de significancia asociado a los intervalos de confianza
+        construidos externamente.
 
     Returns
     -------
     dict
-        Resumen con media_calculada, intervalo y si fue aceptada.
+        Resumen con media calculada, media teorica, limites promedio e
+        indicador de aceptacion global.
     """
     if not sample_means:
         raise ValueError("sample_means no puede estar vacio.")
@@ -341,72 +362,170 @@ def graficar_prueba_medias(sample_means, ci_lower, ci_upper, theoretical_mean=0.
     # Verificar si media teorica cae dentro de los intervalos
     aceptada = np.all((ci_lower <= theoretical_mean) & (theoretical_mean <= ci_upper))
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+    fig, ax = plt.subplots(figsize=(13, 7))
 
-    # Panel 1: distribucion de medias calculadas
-    # Usar Regla de Sturges para mejor distribución de bins
-    num_bins = max(5, int(np.ceil(np.log2(len(sample_means)) + 1)))
-    ax1.hist(
+    # 1) Distribucion de medias en un solo eje (x=0)
+    x_dist = np.zeros_like(sample_means, dtype=float)
+    ax.scatter(
+        x_dist,
         sample_means,
-        bins=num_bins,
+        s=35,
+        alpha=0.35,
         color="steelblue",
-        edgecolor="black",
-        alpha=0.75,
+        edgecolor="none",
+        label="Distribucion de medias",
     )
-    ax1.axvline(
-        theoretical_mean,
-        color="crimson",
-        linestyle="--",
-        linewidth=2,
-        label=f"Media teorica = {theoretical_mean:.4f}",
-    )
-    ax1.set_title("Distribucion de medias calculadas")
-    ax1.set_xlabel("Media muestral")
-    ax1.set_ylabel("Frecuencia")
-    ax1.grid(axis="y", alpha=0.3)
-    ax1.legend()
 
-    # Panel 2: intervalos de confianza por experimento
-    ax2.errorbar(
+    # 2) Intervalos de confianza por experimento
+    ax.errorbar(
         experiment_ids,
         sample_means,
         yerr=[lower_err, upper_err],
         fmt="o",
         color="navy",
         ecolor="gray",
-        elinewidth=1.5,
+        elinewidth=1.4,
         capsize=4,
         markersize=5,
         label="Media e IC (95%)",
     )
-    ax2.axhline(
+
+    # 3) Media teorica esperada
+    ax.axhline(
         theoretical_mean,
         color="crimson",
         linestyle="--",
         linewidth=2,
         label=f"Media teorica = {theoretical_mean:.4f}",
     )
-    ax2.set_title("Intervalos de confianza por experimento")
-    ax2.set_xlabel("Experimento")
-    ax2.set_ylabel("Valor de media")
+
+    ax.set_title("Prueba de Medias")
+    ax.set_xlabel("Experimento (x=0 muestra distribucion)")
+    ax.set_ylabel("Media")
+    ax.grid(alpha=0.3)
+
     if len(experiment_ids) <= 20:
-        ax2.set_xticks(experiment_ids)
-    ax2.grid(alpha=0.3)
-    ax2.legend()
+        xticks = np.concatenate(([0], experiment_ids))
+    else:
+        saltos = max(1, len(experiment_ids) // 10)
+        xticks = np.concatenate(([0], experiment_ids[::saltos]))
+    ax.set_xticks(xticks)
 
-    plt.suptitle("Prueba de Medias - Cuadrados Medios", fontsize=12, fontweight="bold")
+    ax.legend()
     plt.tight_layout()
-    plt.show()
-
+    
     print("\n--- Resumen Medias ---")
     print(f"Media calculada: {np.mean(sample_means):.8f}")
     print(f"Media teorica: {theoretical_mean:.8f}")
     print(f"Intervalo confianza promedio: [{np.mean(ci_lower):.8f}, {np.mean(ci_upper):.8f}]")
     print(f"Resultado: {'Aceptada' if aceptada else 'Rechazada'}")
+    
+    plt.show()
+
+ 
 
     return {
         "media_calculada": float(np.mean(sample_means)),
         "media_teorica": theoretical_mean,
+        "ci_lower": float(np.mean(ci_lower)),
+        "ci_upper": float(np.mean(ci_upper)),
+        "aceptada": bool(aceptada),
+    }
+
+def graficar_prueba_varianza(
+    sample_variances, ci_lower, ci_upper, theoretical_variance=1 / 12, alpha=0.05
+):
+    """
+    Grafico unico para prueba de varianza:
+    - Distribucion de varianzas (nube de puntos)
+    - Intervalos de confianza por experimento
+    - Varianza teorica esperada
+    """
+    sample_variances = np.asarray(sample_variances, dtype=float)
+    ci_lower = np.asarray(ci_lower, dtype=float)
+    ci_upper = np.asarray(ci_upper, dtype=float)
+
+    if sample_variances.size == 0:
+        raise ValueError("sample_variances no puede estar vacio.")
+    if not (len(sample_variances) == len(ci_lower) == len(ci_upper)):
+        raise ValueError(
+            "sample_variances, ci_lower y ci_upper deben tener la misma longitud"
+        )
+
+    experiment_ids = np.arange(1, len(sample_variances) + 1)
+    lower_err = sample_variances - ci_lower
+    upper_err = ci_upper - sample_variances
+
+    # Aceptacion global: todos los IC contienen la varianza teorica
+    aceptada = np.all(
+        (ci_lower <= theoretical_variance) & (theoretical_variance <= ci_upper)
+    )
+
+    fig, ax = plt.subplots(figsize=(13, 7))
+
+    # 1) Distribucion de varianzas en un solo eje (x=0)
+    x_dist = np.zeros_like(sample_variances, dtype=float)
+    ax.scatter(
+        x_dist,
+        sample_variances,
+        s=35,
+        alpha=0.35,
+        color="steelblue",
+        edgecolor="none",
+        label="Distribucion de varianzas",
+    )
+
+    # 2) Intervalos de confianza por experimento
+    ax.errorbar(
+        experiment_ids,
+        sample_variances,
+        yerr=[lower_err, upper_err],
+        fmt="o",
+        color="navy",
+        ecolor="gray",
+        elinewidth=1.4,
+        capsize=4,
+        markersize=5,
+        label="Varianza e IC",
+    )
+
+    # 3) Varianza teorica esperada
+    ax.axhline(
+        theoretical_variance,
+        color="crimson",
+        linestyle="--",
+        linewidth=2,
+        label=f"Varianza teorica = {theoretical_variance:.6f}",
+    )
+
+    ax.set_title("Prueba de Varianza - Grafico Unico")
+    ax.set_xlabel("Experimento (x=0 muestra distribucion)")
+    ax.set_ylabel("Varianza")
+    ax.grid(alpha=0.3)
+
+    # Ticks: 0 para distribucion + algunos experimentos para no saturar
+    if len(experiment_ids) <= 20:
+        xticks = np.concatenate(([0], experiment_ids))
+    else:
+        saltos = max(1, len(experiment_ids) // 10)
+        xticks = np.concatenate(([0], experiment_ids[::saltos]))
+    ax.set_xticks(xticks)
+
+    ax.legend()
+    plt.tight_layout()
+    plt.show()
+
+    print("\n--- Resumen Varianza ---")
+    print(f"Varianza calculada (promedio): {np.mean(sample_variances):.8f}")
+    print(f"Varianza teorica: {theoretical_variance:.8f}")
+    print(
+        f"IC promedio: [{np.mean(ci_lower):.8f}, {np.mean(ci_upper):.8f}]"
+    )
+    print(f"Resultado: {'Aceptada' if aceptada else 'Rechazada'}")
+
+    return {
+        "varianza_calculada": float(np.mean(sample_variances)),
+        "varianza_teorica": float(theoretical_variance),
         "ci_lower": float(np.mean(ci_lower)),
         "ci_upper": float(np.mean(ci_upper)),
         "aceptada": bool(aceptada),
@@ -418,4 +537,5 @@ __all__ = [
     "graficar_prueba_poker",
     "graficar_prueba_rachas",
     "graficar_prueba_medias",
+    "graficar_prueba_varianza",
 ]
