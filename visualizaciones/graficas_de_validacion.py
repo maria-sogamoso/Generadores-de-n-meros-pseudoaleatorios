@@ -297,8 +297,125 @@ def graficar_prueba_rachas(numeros_aleatorios, alpha=0.05):
         "aceptada": aceptada,
     }
 
+def graficar_prueba_medias(sample_means, ci_lower, ci_upper, theoretical_mean=0.5, alpha=0.05):
+    """
+    Grafica la prueba de medias mostrando:
+    1) Distribucion de medias calculadas.
+    2) Intervalos de confianza por experimento.
+    3) Media teorica esperada.
+
+    Parameters
+    ----------
+    sample_means : list[float] | np.ndarray
+        Medias calculadas en cada corrida/experimento.
+    ci_lower : list[float] | np.ndarray
+        Limite inferior del intervalo de confianza por experimento.
+    ci_upper : list[float] | np.ndarray
+        Limite superior del intervalo de confianza por experimento.
+    theoretical_mean : float, optional
+        Media teorica esperada. Para U(0,1) es 0.5.
+    alpha : float, optional
+        Nivel de significancia para el intervalo de confianza.
+
+    Returns
+    -------
+    dict
+        Resumen con media_calculada, intervalo y si fue aceptada.
+    """
+    if not sample_means:
+        raise ValueError("sample_means no puede estar vacio.")
+
+    sample_means = np.asarray(sample_means, dtype=float)
+    ci_lower = np.asarray(ci_lower, dtype=float)
+    ci_upper = np.asarray(ci_upper, dtype=float)
+
+    if not (len(sample_means) == len(ci_lower) == len(ci_upper)):
+        raise ValueError(
+            "sample_means, ci_lower y ci_upper deben tener la misma longitud"
+        )
+
+    experiment_ids = np.arange(1, len(sample_means) + 1)
+    lower_err = sample_means - ci_lower
+    upper_err = ci_upper - sample_means
+
+    # Verificar si media teorica cae dentro de los intervalos
+    aceptada = np.all((ci_lower <= theoretical_mean) & (theoretical_mean <= ci_upper))
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+
+    # Panel 1: distribucion de medias calculadas
+    # Usar Regla de Sturges para mejor distribución de bins
+    num_bins = max(5, int(np.ceil(np.log2(len(sample_means)) + 1)))
+    ax1.hist(
+        sample_means,
+        bins=num_bins,
+        color="steelblue",
+        edgecolor="black",
+        alpha=0.75,
+    )
+    ax1.axvline(
+        theoretical_mean,
+        color="crimson",
+        linestyle="--",
+        linewidth=2,
+        label=f"Media teorica = {theoretical_mean:.4f}",
+    )
+    ax1.set_title("Distribucion de medias calculadas")
+    ax1.set_xlabel("Media muestral")
+    ax1.set_ylabel("Frecuencia")
+    ax1.grid(axis="y", alpha=0.3)
+    ax1.legend()
+
+    # Panel 2: intervalos de confianza por experimento
+    ax2.errorbar(
+        experiment_ids,
+        sample_means,
+        yerr=[lower_err, upper_err],
+        fmt="o",
+        color="navy",
+        ecolor="gray",
+        elinewidth=1.5,
+        capsize=4,
+        markersize=5,
+        label="Media e IC (95%)",
+    )
+    ax2.axhline(
+        theoretical_mean,
+        color="crimson",
+        linestyle="--",
+        linewidth=2,
+        label=f"Media teorica = {theoretical_mean:.4f}",
+    )
+    ax2.set_title("Intervalos de confianza por experimento")
+    ax2.set_xlabel("Experimento")
+    ax2.set_ylabel("Valor de media")
+    if len(experiment_ids) <= 20:
+        ax2.set_xticks(experiment_ids)
+    ax2.grid(alpha=0.3)
+    ax2.legend()
+
+    plt.suptitle("Prueba de Medias - Cuadrados Medios", fontsize=12, fontweight="bold")
+    plt.tight_layout()
+    plt.show()
+
+    print("\n--- Resumen Medias ---")
+    print(f"Media calculada: {np.mean(sample_means):.8f}")
+    print(f"Media teorica: {theoretical_mean:.8f}")
+    print(f"Intervalo confianza promedio: [{np.mean(ci_lower):.8f}, {np.mean(ci_upper):.8f}]")
+    print(f"Resultado: {'Aceptada' if aceptada else 'Rechazada'}")
+
+    return {
+        "media_calculada": float(np.mean(sample_means)),
+        "media_teorica": theoretical_mean,
+        "ci_lower": float(np.mean(ci_lower)),
+        "ci_upper": float(np.mean(ci_upper)),
+        "aceptada": bool(aceptada),
+    }
+
+
 __all__ = [
     "graficar_kolmogorov_smirnov",
     "graficar_prueba_poker",
     "graficar_prueba_rachas",
+    "graficar_prueba_medias",
 ]
