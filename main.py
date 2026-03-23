@@ -1,31 +1,12 @@
-import csv
-import re
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy.stats import chi2, norm 
-
-from generador_numeros.cuadrados_medios import GeneradorCuadradosMedios
-from generador_numeros.congruencia_lineal import GeneradorCongruenciaLineal
-from generador_numeros.congruencial_multiplicativo import GeneradorCongruencialMultiplicativo
-from generador_numeros.congruencial_aditivo import GeneradorCongruencialAditivo
-
-from validadores.prueba_chi_cuadrado import PruebaChiCuadrado
-from validadores.prueba_kolmogorov_smirnov import PruebaKolmogorovSmirnov
-from validadores.prueba_medias import PruebaMedias
-from validadores.prueba_varianza import PruebaVarianza
-from validadores.prueba_poker import PruebaPoker
-from validadores.prueba_rachas import PruebaRachas
-
-from visualizaciones.graficas_de_validacion import (
-    graficar_kolmogorov_smirnov,
-    graficar_prueba_chi_cuadrado,
-    graficar_prueba_poker,
-    graficar_prueba_rachas,
-    graficar_prueba_medias,
-    graficar_prueba_varianza,
+from app_services import (
+    ExportacionService,
+    GeneracionService,
+    GraficosService,
+    SemillasService,
+    ValidacionService,
 )
 
 
@@ -38,6 +19,12 @@ class App(tk.Tk):
         self.semillas_archivo = []
         self.secuencias = {}  # clave corrida -> lista Ri
         self.corridas_var = tk.IntVar(value=30)
+
+        self.semillas_service = SemillasService()
+        self.generacion_service = GeneracionService()
+        self.validacion_service = ValidacionService()
+        self.graficos_service = GraficosService()
+        self.exportacion_service = ExportacionService()
 
         self._build_ui()
 
@@ -69,37 +56,6 @@ class App(tk.Tk):
         self.lbl_archivo = ttk.Label(semillas_frame, text="Sin archivo cargado")
         self.lbl_archivo.grid(row=1, column=2, sticky="w")
 
-        # Parametros globales
-        params_frame = ttk.LabelFrame(top, text="Parametros", padding=10)
-        params_frame.pack(fill="x", pady=5)
-
-        ttk.Label(params_frame, text="Cantidad de numeros (pasos):").grid(row=0, column=0, sticky="w")
-        self.pasos_var = tk.IntVar(value=1000)
-        ttk.Entry(params_frame, textvariable=self.pasos_var, width=12).grid(row=0, column=1, sticky="w")
-
-        ttk.Label(params_frame, text="Digitos cuadrados medios:").grid(row=0, column=2, sticky="w", padx=(20, 0))
-        self.digitos_var = tk.IntVar(value=8)
-        ttk.Entry(params_frame, textvariable=self.digitos_var, width=10).grid(row=0, column=3, sticky="w")
-
-        ttk.Label(params_frame, text="a multiplicativo:").grid(row=0, column=4, sticky="w", padx=(20, 0))
-        self.a_mult_var = tk.IntVar(value=1664525)
-        ttk.Entry(params_frame, textvariable=self.a_mult_var, width=12).grid(row=0, column=5, sticky="w")
-
-        ttk.Label(params_frame, text="m multiplicativo/aditivo:").grid(row=0, column=6, sticky="w", padx=(20, 0))
-        self.m_var = tk.IntVar(value=2**32)
-        ttk.Entry(params_frame, textvariable=self.m_var, width=14).grid(row=0, column=7, sticky="w")
-
-        ttk.Label(params_frame, text="Corridas (solo Medias/Varianza):").grid(
-            row=0, column=8, sticky="w", padx=(20, 0)
-        )
-        self.entry_corridas = ttk.Entry(
-            params_frame,
-            textvariable=self.corridas_var,
-            width=10,
-            state="disabled",
-        )
-        self.entry_corridas.grid(row=0, column=9, sticky="w")
-
         # Seleccion de metodos
         metodos_frame = ttk.LabelFrame(top, text="Metodos de generacion", padding=10)
         metodos_frame.pack(fill="x", pady=5)
@@ -112,8 +68,49 @@ class App(tk.Tk):
         }
         col = 0
         for nombre, var in self.metodos_vars.items():
-            ttk.Checkbutton(metodos_frame, text=nombre, variable=var).grid(row=0, column=col, sticky="w", padx=6)
+            ttk.Checkbutton(
+                metodos_frame,
+                text=nombre,
+                variable=var,
+                command=self._actualizar_parametros_metodos,
+            ).grid(row=0, column=col, sticky="w", padx=6)
             col += 1
+
+        # Parametros globales
+        params_frame = ttk.LabelFrame(top, text="Parametros", padding=10)
+        params_frame.pack(fill="x", pady=5)
+
+        ttk.Label(params_frame, text="Cantidad de numeros (pasos):").grid(row=0, column=0, sticky="w")
+        self.pasos_var = tk.IntVar(value=1000)
+        ttk.Entry(params_frame, textvariable=self.pasos_var, width=12).grid(row=0, column=1, sticky="w")
+
+        self.lbl_digitos = ttk.Label(params_frame, text="Digitos cuadrados medios:")
+        self.lbl_digitos.grid(row=0, column=2, sticky="w", padx=(20, 0))
+        self.digitos_var = tk.IntVar(value=8)
+        self.entry_digitos = ttk.Entry(params_frame, textvariable=self.digitos_var, width=10)
+        self.entry_digitos.grid(row=0, column=3, sticky="w")
+
+        self.lbl_a_mult = ttk.Label(params_frame, text="a multiplicativo:")
+        self.lbl_a_mult.grid(row=0, column=4, sticky="w", padx=(20, 0))
+        self.a_mult_var = tk.IntVar(value=1664525)
+        self.entry_a_mult = ttk.Entry(params_frame, textvariable=self.a_mult_var, width=12)
+        self.entry_a_mult.grid(row=0, column=5, sticky="w")
+
+        self.lbl_m = ttk.Label(params_frame, text="m multiplicativo/aditivo:")
+        self.lbl_m.grid(row=0, column=6, sticky="w", padx=(20, 0))
+        self.m_var = tk.IntVar(value=2**32)
+        self.entry_m = ttk.Entry(params_frame, textvariable=self.m_var, width=14)
+        self.entry_m.grid(row=0, column=7, sticky="w")
+
+        self.lbl_corridas = ttk.Label(params_frame, text="Corridas (solo Medias/Varianza):")
+        self.lbl_corridas.grid(row=0, column=8, sticky="w", padx=(20, 0))
+        self.entry_corridas = ttk.Entry(
+            params_frame,
+            textvariable=self.corridas_var,
+            width=10,
+        )
+        self.entry_corridas.grid(row=0, column=9, sticky="w")
+
 
         # Seleccion de pruebas
         pruebas_frame = ttk.LabelFrame(top, text="Pruebas de validacion", padding=10)
@@ -137,6 +134,7 @@ class App(tk.Tk):
             ).grid(row=0, column=col, sticky="w", padx=6)
             col += 1
         self._actualizar_estado_corridas()
+        self._actualizar_parametros_metodos()
 
         acciones = ttk.Frame(top)
         acciones.pack(fill="x", pady=8)
@@ -199,18 +197,10 @@ class App(tk.Tk):
         self.tabla_val.pack(fill="both", expand=True)
 
     def _parse_semillas_texto(self, texto):
-        tokens = re.split(r"[,\s;]+", texto.strip())
-        semillas = []
-        for t in tokens:
-            if t == "":
-                continue
-            semillas.append(int(t))
-        return semillas
+        return self.semillas_service.parsear_texto(texto)
 
     def _leer_semillas_archivo(self, path):
-        with open(path, "r", encoding="utf-8") as f:
-            contenido = f.read()
-        return self._parse_semillas_texto(contenido)
+        return self.semillas_service.leer_archivo(path)
 
     def _cargar_archivo_semillas(self):
         path = filedialog.askopenfilename(
@@ -247,86 +237,41 @@ class App(tk.Tk):
             self.pruebas_vars["Medias"].get()
             or self.pruebas_vars["Varianza"].get()
         )
-        self.entry_corridas.config(state="normal" if requiere_corridas else "disabled")
+        self._set_visibilidad_parametro(self.lbl_corridas, self.entry_corridas, requiere_corridas)
+
+    def _actualizar_parametros_metodos(self):
+        usa_cuadrados = self.metodos_vars["Cuadrados Medios"].get()
+        usa_multiplicativo = self.metodos_vars["Congruencial Multiplicativo"].get()
+        usa_aditivo = self.metodos_vars["Congruencial Aditivo"].get()
+        usa_m = usa_multiplicativo or usa_aditivo
+
+        self._set_visibilidad_parametro(self.lbl_digitos, self.entry_digitos, usa_cuadrados)
+        self._set_visibilidad_parametro(self.lbl_a_mult, self.entry_a_mult, usa_multiplicativo)
+        self._set_visibilidad_parametro(self.lbl_m, self.entry_m, usa_m)
+
+    @staticmethod
+    def _set_visibilidad_parametro(label_widget, entry_widget, visible):
+        if visible:
+            label_widget.grid()
+            entry_widget.grid()
+        else:
+            label_widget.grid_remove()
+            entry_widget.grid_remove()
 
     def _generar_por_metodo(self, metodo, semillas, pasos, corridas=1):
-        corridas_generadas = {}
-        if metodo == "Cuadrados Medios":
-            d = self.digitos_var.get()
-            for s in semillas:
-                for i in range(corridas):
-                    semilla_i = s + i
-                    gen = GeneradorCuadradosMedios(semilla=semilla_i, digitos=d)
-                    seq = gen.siguiente_Ri_Cuadrados_Medios(pasos)
-                    key = f"{metodo} | corrida={i + 1} | semilla={semilla_i}"
-                    corridas_generadas[key] = (metodo, semilla_i, seq)
-
-        elif metodo == "Congruencia Lineal":
-            for s in semillas:
-                for i in range(corridas):
-                    semilla_i = s + i
-                    gen = GeneradorCongruenciaLineal(semilla=semilla_i)
-                    seq = gen.siguiente_Ri_Congruencia_Lineal(pasos)
-                    key = f"{metodo} | corrida={i + 1} | semilla={semilla_i}"
-                    corridas_generadas[key] = (metodo, semilla_i, seq)
-
-        elif metodo == "Congruencial Multiplicativo":
-            a = self.a_mult_var.get()
-            m = self.m_var.get()
-            for s in semillas:
-                for i in range(corridas):
-                    semilla_i = s + i
-                    gen = GeneradorCongruencialMultiplicativo(
-                        semilla=semilla_i,
-                        a=a,
-                        m=m,
-                    )
-                    seq = gen.siguiente_Ri_Congruencial_Multiplicativo(pasos)
-                    key = f"{metodo} | corrida={i + 1} | semilla={semilla_i}"
-                    corridas_generadas[key] = (metodo, semilla_i, seq)
-
-        elif metodo == "Congruencial Aditivo":
-            if len(semillas) < 2:
-                raise ValueError("Congruencial aditivo requiere al menos 2 semillas.")
-            m = self.m_var.get()
-            for i in range(corridas):
-                semillas_i = [s + i for s in semillas]
-                gen = GeneradorCongruencialAditivo(semillas_iniciales=semillas_i, m=m)
-                seq = gen.siguiente_Ri_Congruencial_Aditivo(pasos)
-                key = f"{metodo} | corrida={i + 1} | semillas={semillas_i}"
-                corridas_generadas[key] = (metodo, f"lista+{i}", seq)
-
-        return corridas_generadas
+        return self.generacion_service.generar_por_metodo(
+            metodo=metodo,
+            semillas=semillas,
+            pasos=pasos,
+            corridas=corridas,
+            digitos=self.digitos_var.get(),
+            a_mult=self.a_mult_var.get(),
+            m=self.m_var.get(),
+        )
 
     def _ejecutar_pruebas(self, seq):
-        resultados = []
         pruebas = [p for p, v in self.pruebas_vars.items() if v.get()]
-
-        for p in pruebas:
-            try:
-                if p == "Chi Cuadrado":
-                    k = max(10, min(100, len(seq) // 5))
-                    ok = PruebaChiCuadrado().prueba_chi_cuadrado(seq, k=k)
-                    resultados.append((p, ok, f"k={k}"))
-                elif p == "Kolmogorov Smirnov":
-                    ok = PruebaKolmogorovSmirnov().prueba_kolmogorov_smirnov(seq)
-                    resultados.append((p, ok, "alpha=0.05"))
-                elif p == "Medias":
-                    ok = PruebaMedias().prueba_medias(seq)
-                    resultados.append((p, ok, "alpha=0.05"))
-                elif p == "Varianza":
-                    ok = PruebaVarianza().prueba_varianza(seq)
-                    resultados.append((p, ok, "alpha=0.05"))
-                elif p == "Poker":
-                    ok = PruebaPoker().prueba_poker(seq)
-                    resultados.append((p, ok, "5 digitos"))
-                elif p == "Rachas":
-                    ok = PruebaRachas().prueba_rachas(seq)
-                    resultados.append((p, ok, "mediana=0.5"))
-            except Exception as e:
-                resultados.append((p, False, f"Error: {e}"))
-
-        return resultados
+        return self.validacion_service.ejecutar_pruebas(seq, pruebas)
 
     def _ejecutar(self):
         try:
@@ -400,117 +345,17 @@ class App(tk.Tk):
         tipo = self.combo_grafico.get()
 
         try:
-            if tipo == "Histograma":
-                plt.figure(figsize=(9, 5))
-                plt.hist(seq, bins=30, range=(0, 1), color="steelblue", edgecolor="black")
-                plt.title(f"Histograma - {corrida}")
-                plt.xlabel("Ri")
-                plt.ylabel("Frecuencia")
-                plt.grid(alpha=0.3)
-                plt.tight_layout()
-                plt.show()
-            elif tipo == "Kolmogorov Smirnov":
-                graficar_kolmogorov_smirnov(seq)
-            elif tipo == "Poker":
-                graficar_prueba_poker(seq)
-            elif tipo == "Rachas":
-                graficar_prueba_rachas(seq)
-            elif tipo == "Chi Cuadrado":
-                #k = max(10, min(100, len(seq) // 5))
-                graficar_prueba_chi_cuadrado(seq, k=10, alpha=0.05)
-
-            elif tipo == "Medias":
-                if not self.secuencias:
-                    raise ValueError("No hay corridas disponibles para graficar medias.")
-
-                alpha = 0.05
-                z = float(norm.ppf(1 - alpha / 2))
-
-                sample_means = []
-                ci_lower = []
-                ci_upper = []
-
-                for _, seq_i in self.secuencias.items():
-                    n_i = len(seq_i)
-                    if n_i < 2:
-                        continue
-
-                    media_i = float(np.mean(seq_i))
-                    # IC centrado en la media muestral para mantener yerr >= 0.
-                    error_i = z * ((1 / (12 * n_i)) ** 0.5)
-
-                    sample_means.append(media_i)
-                    ci_lower.append(media_i - error_i)
-                    ci_upper.append(media_i + error_i)
-
-                if not sample_means:
-                    raise ValueError("No hay corridas con datos suficientes para graficar medias.")
-
-                graficar_prueba_medias(
-                    sample_means=sample_means,
-                    ci_lower=ci_lower,
-                    ci_upper=ci_upper,
-                    theoretical_mean=0.5,
-                    alpha=alpha,
-                )
-
-            elif tipo == "Varianza":
-                if not self.secuencias:
-                    raise ValueError("No hay corridas disponibles para graficar varianza.")
-
-                alpha = 0.05
-                var_teorica = 1 / 12
-
-                sample_variances = []
-                ci_lower = []
-                ci_upper = []
-
-                for _, seq_i in self.secuencias.items():
-                    n_i = len(seq_i)
-                    if n_i < 2:
-                        continue
-
-                    s2 = float(np.var(seq_i, ddof=1))
-                    chi2_inf = float(chi2.ppf(alpha / 2, n_i - 1))
-                    chi2_sup = float(chi2.ppf(1 - alpha / 2, n_i - 1))
-
-                    li = (n_i - 1) * s2 / chi2_sup
-                    ls = (n_i - 1) * s2 / chi2_inf
-
-                    sample_variances.append(s2)
-                    ci_lower.append(li)
-                    ci_upper.append(ls)
-
-                if not sample_variances:
-                    raise ValueError("No hay corridas con datos suficientes para graficar varianza.")
-
-                graficar_prueba_varianza(
-                    sample_variances=sample_variances,
-                    ci_lower=ci_lower,
-                    ci_upper=ci_upper,
-                    theoretical_variance=var_teorica,
-                    alpha=alpha,
-                )
+            self.graficos_service.mostrar(
+                tipo=tipo,
+                corrida=corrida,
+                seq=seq,
+                secuencias=self.secuencias,
+            )
         except Exception as e:
             messagebox.showerror("Error al graficar", str(e))
 
     def _exportar_treeview_csv(self, treeview, columnas, sugerido):
-        path = filedialog.asksaveasfilename(
-            title="Guardar CSV",
-            defaultextension=".csv",
-            initialfile=sugerido,
-            filetypes=[("CSV", "*.csv")],
-        )
-        if not path:
-            return
-
-        with open(path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f)
-            writer.writerow(columnas)
-            for item in treeview.get_children():
-                writer.writerow(treeview.item(item)["values"])
-
-        messagebox.showinfo("Exportacion", f"Archivo generado: {path}")
+        self.exportacion_service.exportar_treeview_csv(treeview, columnas, sugerido)
 
     def _exportar_secuencias(self):
         self._exportar_treeview_csv(
