@@ -37,6 +37,7 @@ class App(tk.Tk):
 
         self.semillas_archivo = []
         self.secuencias = {}  # clave corrida -> lista Ri
+        self.corridas_var = tk.IntVar(value=30)
 
         self._build_ui()
 
@@ -88,6 +89,17 @@ class App(tk.Tk):
         self.m_var = tk.IntVar(value=2**32)
         ttk.Entry(params_frame, textvariable=self.m_var, width=14).grid(row=0, column=7, sticky="w")
 
+        ttk.Label(params_frame, text="Corridas (solo Medias/Varianza):").grid(
+            row=0, column=8, sticky="w", padx=(20, 0)
+        )
+        self.entry_corridas = ttk.Entry(
+            params_frame,
+            textvariable=self.corridas_var,
+            width=10,
+            state="disabled",
+        )
+        self.entry_corridas.grid(row=0, column=9, sticky="w")
+
         # Seleccion de metodos
         metodos_frame = ttk.LabelFrame(top, text="Metodos de generacion", padding=10)
         metodos_frame.pack(fill="x", pady=5)
@@ -117,8 +129,14 @@ class App(tk.Tk):
         }
         col = 0
         for nombre, var in self.pruebas_vars.items():
-            ttk.Checkbutton(pruebas_frame, text=nombre, variable=var).grid(row=0, column=col, sticky="w", padx=6)
+            ttk.Checkbutton(
+                pruebas_frame,
+                text=nombre,
+                variable=var,
+                command=self._actualizar_estado_corridas,
+            ).grid(row=0, column=col, sticky="w", padx=6)
             col += 1
+        self._actualizar_estado_corridas()
 
         acciones = ttk.Frame(top)
         acciones.pack(fill="x", pady=8)
@@ -224,42 +242,61 @@ class App(tk.Tk):
             raise ValueError("No se detectaron semillas validas.")
         return semillas
 
-    def _generar_por_metodo(self, metodo, semillas, pasos):
-        corridas = {}
+    def _actualizar_estado_corridas(self):
+        requiere_corridas = (
+            self.pruebas_vars["Medias"].get()
+            or self.pruebas_vars["Varianza"].get()
+        )
+        self.entry_corridas.config(state="normal" if requiere_corridas else "disabled")
+
+    def _generar_por_metodo(self, metodo, semillas, pasos, corridas=1):
+        corridas_generadas = {}
         if metodo == "Cuadrados Medios":
             d = self.digitos_var.get()
             for s in semillas:
-                gen = GeneradorCuadradosMedios(semilla=s, digitos=d)
-                seq = gen.siguiente_Ri_Cuadrados_Medios(pasos)
-                key = f"{metodo} | semilla={s}"
-                corridas[key] = (metodo, s, seq)
+                for i in range(corridas):
+                    semilla_i = s + i
+                    gen = GeneradorCuadradosMedios(semilla=semilla_i, digitos=d)
+                    seq = gen.siguiente_Ri_Cuadrados_Medios(pasos)
+                    key = f"{metodo} | corrida={i + 1} | semilla={semilla_i}"
+                    corridas_generadas[key] = (metodo, semilla_i, seq)
 
         elif metodo == "Congruencia Lineal":
             for s in semillas:
-                gen = GeneradorCongruenciaLineal(semilla=s)
-                seq = gen.siguiente_Ri_Congruencia_Lineal(pasos)
-                key = f"{metodo} | semilla={s}"
-                corridas[key] = (metodo, s, seq)
+                for i in range(corridas):
+                    semilla_i = s + i
+                    gen = GeneradorCongruenciaLineal(semilla=semilla_i)
+                    seq = gen.siguiente_Ri_Congruencia_Lineal(pasos)
+                    key = f"{metodo} | corrida={i + 1} | semilla={semilla_i}"
+                    corridas_generadas[key] = (metodo, semilla_i, seq)
 
         elif metodo == "Congruencial Multiplicativo":
             a = self.a_mult_var.get()
             m = self.m_var.get()
             for s in semillas:
-                gen = GeneradorCongruencialMultiplicativo(semilla=s, a=a, m=m)
-                seq = gen.siguiente_Ri_Congruencial_Multiplicativo(pasos)
-                key = f"{metodo} | semilla={s}"
-                corridas[key] = (metodo, s, seq)
+                for i in range(corridas):
+                    semilla_i = s + i
+                    gen = GeneradorCongruencialMultiplicativo(
+                        semilla=semilla_i,
+                        a=a,
+                        m=m,
+                    )
+                    seq = gen.siguiente_Ri_Congruencial_Multiplicativo(pasos)
+                    key = f"{metodo} | corrida={i + 1} | semilla={semilla_i}"
+                    corridas_generadas[key] = (metodo, semilla_i, seq)
 
         elif metodo == "Congruencial Aditivo":
             if len(semillas) < 2:
                 raise ValueError("Congruencial aditivo requiere al menos 2 semillas.")
             m = self.m_var.get()
-            gen = GeneradorCongruencialAditivo(semillas_iniciales=semillas, m=m)
-            seq = gen.siguiente_Ri_Congruencial_Aditivo(pasos)
-            key = f"{metodo} | semillas={semillas}"
-            corridas[key] = (metodo, "lista", seq)
+            for i in range(corridas):
+                semillas_i = [s + i for s in semillas]
+                gen = GeneradorCongruencialAditivo(semillas_iniciales=semillas_i, m=m)
+                seq = gen.siguiente_Ri_Congruencial_Aditivo(pasos)
+                key = f"{metodo} | corrida={i + 1} | semillas={semillas_i}"
+                corridas_generadas[key] = (metodo, f"lista+{i}", seq)
 
-        return corridas
+        return corridas_generadas
 
     def _ejecutar_pruebas(self, seq):
         resultados = []
@@ -302,6 +339,18 @@ class App(tk.Tk):
             if not metodos:
                 raise ValueError("Selecciona al menos un metodo.")
 
+            requiere_corridas = (
+                self.pruebas_vars["Medias"].get()
+                or self.pruebas_vars["Varianza"].get()
+            )
+            total_corridas = self.corridas_var.get() if requiere_corridas else 1
+            if total_corridas <= 0:
+                raise ValueError("Corridas debe ser mayor a 0.")
+            if requiere_corridas and total_corridas < 2:
+                raise ValueError(
+                    "Para Medias/Varianza debes usar al menos 2 corridas."
+                )
+
             # limpiar tablas y estado
             for i in self.tabla_seq.get_children():
                 self.tabla_seq.delete(i)
@@ -310,7 +359,12 @@ class App(tk.Tk):
             self.secuencias.clear()
 
             for metodo in metodos:
-                corridas = self._generar_por_metodo(metodo, semillas, pasos)
+                corridas = self._generar_por_metodo(
+                    metodo,
+                    semillas,
+                    pasos,
+                    corridas=total_corridas,
+                )
                 for corrida, (met, sem, seq) in corridas.items():
                     self.secuencias[corrida] = seq
 
@@ -362,28 +416,81 @@ class App(tk.Tk):
             elif tipo == "Rachas":
                 graficar_prueba_rachas(seq)
             elif tipo == "Chi Cuadrado":
-                k = max(10, min(100, len(seq) // 5))
-                graficar_prueba_chi_cuadrado(seq, k=k, alpha=0.05)
+                #k = max(10, min(100, len(seq) // 5))
+                graficar_prueba_chi_cuadrado(seq, k=10, alpha=0.05)
 
             elif tipo == "Medias":
-                n = len(seq)
-                media = float(np.mean(seq))
-                z = float(norm.ppf(1 - 0.05 / 2))
-                error = z * ((1 / (12 * n)) ** 0.5)
-                ci_lower = [media - error]
-                ci_upper = [media + error]
-                graficar_prueba_medias([media], ci_lower, ci_upper, theoretical_mean=0.5, alpha=0.05)
+                if not self.secuencias:
+                    raise ValueError("No hay corridas disponibles para graficar medias.")
+
+                alpha = 0.05
+                z = float(norm.ppf(1 - alpha / 2))
+
+                sample_means = []
+                ci_lower = []
+                ci_upper = []
+
+                for _, seq_i in self.secuencias.items():
+                    n_i = len(seq_i)
+                    if n_i < 2:
+                        continue
+
+                    media_i = float(np.mean(seq_i))
+                    # IC centrado en la media muestral para mantener yerr >= 0.
+                    error_i = z * ((1 / (12 * n_i)) ** 0.5)
+
+                    sample_means.append(media_i)
+                    ci_lower.append(media_i - error_i)
+                    ci_upper.append(media_i + error_i)
+
+                if not sample_means:
+                    raise ValueError("No hay corridas con datos suficientes para graficar medias.")
+
+                graficar_prueba_medias(
+                    sample_means=sample_means,
+                    ci_lower=ci_lower,
+                    ci_upper=ci_upper,
+                    theoretical_mean=0.5,
+                    alpha=alpha,
+                )
 
             elif tipo == "Varianza":
-                n = len(seq)
-                if n < 2:
-                    raise ValueError("Se requieren al menos 2 datos para graficar varianza.")
-                var_muestral = float(np.var(seq, ddof=1))
-                chi_sup = float(chi2.ppf(1 - 0.05 / 2, n - 1))
-                chi_inf = float(chi2.ppf(0.05 / 2, n - 1))
-                li = chi_inf / (12 * (n - 1))
-                ls = chi_sup / (12 * (n - 1))
-                graficar_prueba_varianza([var_muestral], [li], [ls], theoretical_variance=1 / 12, alpha=0.05)
+                if not self.secuencias:
+                    raise ValueError("No hay corridas disponibles para graficar varianza.")
+
+                alpha = 0.05
+                var_teorica = 1 / 12
+
+                sample_variances = []
+                ci_lower = []
+                ci_upper = []
+
+                for _, seq_i in self.secuencias.items():
+                    n_i = len(seq_i)
+                    if n_i < 2:
+                        continue
+
+                    s2 = float(np.var(seq_i, ddof=1))
+                    chi2_inf = float(chi2.ppf(alpha / 2, n_i - 1))
+                    chi2_sup = float(chi2.ppf(1 - alpha / 2, n_i - 1))
+
+                    li = (n_i - 1) * s2 / chi2_sup
+                    ls = (n_i - 1) * s2 / chi2_inf
+
+                    sample_variances.append(s2)
+                    ci_lower.append(li)
+                    ci_upper.append(ls)
+
+                if not sample_variances:
+                    raise ValueError("No hay corridas con datos suficientes para graficar varianza.")
+
+                graficar_prueba_varianza(
+                    sample_variances=sample_variances,
+                    ci_lower=ci_lower,
+                    ci_upper=ci_upper,
+                    theoretical_variance=var_teorica,
+                    alpha=alpha,
+                )
         except Exception as e:
             messagebox.showerror("Error al graficar", str(e))
 
