@@ -9,6 +9,7 @@ from statistics import NormalDist
 
 class ValidacionService:
     _NORMAL_STD = NormalDist(mu=0.0, sigma=1.0)
+    _ESCALA_TRUNCADO = 100000
 
     @staticmethod
     def _transformar_para_validacion(seq, metodo=None, params_dist=None):
@@ -38,10 +39,17 @@ class ValidacionService:
         return seq
 
     @staticmethod
+    def _truncar_a_5_decimales(seq):
+        """Trunca cada valor a 5 decimales sin redondeo."""
+        escala = ValidacionService._ESCALA_TRUNCADO
+        return [int(float(x) * escala) / escala for x in seq]
+
+    @staticmethod
     def ejecutar_pruebas(seq, pruebas_activas, metodo=None, params_dist=None):
         seq_validacion = ValidacionService._transformar_para_validacion(
             seq, metodo=metodo, params_dist=params_dist
         )
+        seq_validacion = ValidacionService._truncar_a_5_decimales(seq_validacion)
         resultados = []
 
         for prueba in pruebas_activas:

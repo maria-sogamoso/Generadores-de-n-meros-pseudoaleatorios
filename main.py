@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
+import math
 
 import ttkbootstrap as ttk
 
@@ -359,6 +360,11 @@ class App(ttk.Window):
             label_widget.grid_remove()
             entry_widget.grid_remove()
 
+    @staticmethod
+    def _truncar_ri_5(seq):
+        escala = 100000
+        return [math.trunc(float(ri) * escala) / escala for ri in seq]
+
     def _generar_por_metodo(self, metodo, semillas, pasos, corridas=1):
         return self.generacion_service.generar_por_metodo(
             metodo=metodo,
@@ -448,13 +454,14 @@ class App(ttk.Window):
                 corridas_totales.update(corridas_dist)
 
             for corrida, (met, sem, seq) in corridas_totales.items():
-                self.secuencias[corrida] = seq
-                self.corridas_info[corrida] = (met, sem, seq)
+                seq_truncada = self._truncar_ri_5(seq)
+                self.secuencias[corrida] = seq_truncada
+                self.corridas_info[corrida] = (met, sem, seq_truncada)
 
-                for i, ri in enumerate(seq, start=1):
-                    self.tabla_seq.insert("", "end", values=(corrida, met, sem, i, f"{ri:.10f}"))
+                for i, ri in enumerate(seq_truncada, start=1):
+                    self.tabla_seq.insert("", "end", values=(corrida, met, sem, i, f"{ri:.5f}"))
 
-                res = self._ejecutar_pruebas(seq, met)
+                res = self._ejecutar_pruebas(seq_truncada, met)
                 for prueba, ok, detalle in res:
                     self.tabla_val.insert(
                         "", "end",
