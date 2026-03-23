@@ -1,5 +1,7 @@
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import filedialog, messagebox
+
+import ttkbootstrap as ttk
 
 from app_services import (
     ExportacionService,
@@ -10,9 +12,9 @@ from app_services import (
 )
 
 
-class App(tk.Tk):
+class App(ttk.Window):
     def __init__(self):
-        super().__init__()
+        super().__init__(themename="flatly")
         self.title("Generador de Numeros Pseudoaleatorios - Interfaz")
         self.geometry("1300x760")
 
@@ -29,12 +31,21 @@ class App(tk.Tk):
         self._build_ui()
 
     def _build_ui(self):
-        top = ttk.Frame(self, padding=10)
-        top.pack(fill="x")
+        # Contenedor principal con 3 secciones: config, acciones, y tablas
+        main_container = ttk.Frame(self, padding=10)
+        main_container.pack(fill="both", expand=True)
+
+        # ============ SECCIÓN DE CONFIGURACIÓN (2 COLUMNAS) ============
+        config_frame = ttk.Frame(main_container)
+        config_frame.pack(fill="x", pady=(0, 10))
+
+        # Columna izquierda: Semillas y Métodos
+        left_column = ttk.Frame(config_frame)
+        left_column.pack(side="left", fill="both", expand=True, padx=(0, 5))
 
         # Entrada de semillas
-        semillas_frame = ttk.LabelFrame(top, text="Entrada de semillas", padding=10)
-        semillas_frame.pack(fill="x", pady=5)
+        semillas_frame = ttk.Labelframe(left_column, text="Entrada de semillas", padding=10, bootstyle="success")
+        semillas_frame.pack(fill="x", pady=(0, 5))
 
         self.modo_semilla = tk.StringVar(value="manual")
         ttk.Radiobutton(
@@ -47,17 +58,17 @@ class App(tk.Tk):
         ttk.Label(semillas_frame, text="Semillas manuales (ej: 123, 456, 789):").grid(
             row=1, column=0, columnspan=2, sticky="w", pady=(6, 0)
         )
-        self.entry_semillas = ttk.Entry(semillas_frame, width=80)
+        self.entry_semillas = ttk.Entry(semillas_frame, width=40)
         self.entry_semillas.grid(row=2, column=0, columnspan=2, sticky="we", pady=2)
 
         ttk.Button(
-            semillas_frame, text="Cargar archivo", command=self._cargar_archivo_semillas
+            semillas_frame, text="Cargar archivo", command=self._cargar_archivo_semillas, bootstyle="secondary"
         ).grid(row=2, column=2, padx=8)
         self.lbl_archivo = ttk.Label(semillas_frame, text="Sin archivo cargado")
         self.lbl_archivo.grid(row=1, column=2, sticky="w")
 
         # Seleccion de metodos
-        metodos_frame = ttk.LabelFrame(top, text="Metodos de generacion", padding=10)
+        metodos_frame = ttk.Labelframe(left_column, text="Metodos de generacion", padding=10, bootstyle="success")
         metodos_frame.pack(fill="x", pady=5)
 
         self.metodos_vars = {
@@ -73,47 +84,51 @@ class App(tk.Tk):
                 text=nombre,
                 variable=var,
                 command=self._actualizar_parametros_metodos,
-            ).grid(row=0, column=col, sticky="w", padx=6)
+            ).grid(row=col, column=0, sticky="w", padx=6, pady=3)
             col += 1
 
-        # Parametros globales
-        params_frame = ttk.LabelFrame(top, text="Parametros", padding=10)
-        params_frame.pack(fill="x", pady=5)
+        # Columna derecha: Parámetros y Pruebas
+        right_column = ttk.Frame(config_frame)
+        right_column.pack(side="right", fill="both", expand=True, padx=(5, 0))
 
-        ttk.Label(params_frame, text="Cantidad de numeros (pasos):").grid(row=0, column=0, sticky="w")
+        # Parametros globales
+        params_frame = ttk.Labelframe(right_column, text="Parametros", padding=10, bootstyle="info")
+        params_frame.pack(fill="x", pady=(0, 5))
+
+        ttk.Label(params_frame, text="Pasos:").grid(row=0, column=0, sticky="w")
         self.pasos_var = tk.IntVar(value=1000)
         ttk.Entry(params_frame, textvariable=self.pasos_var, width=12).grid(row=0, column=1, sticky="w")
 
-        self.lbl_digitos = ttk.Label(params_frame, text="Digitos cuadrados medios:")
-        self.lbl_digitos.grid(row=0, column=2, sticky="w", padx=(20, 0))
+        self.lbl_digitos = ttk.Label(params_frame, text="Digitos:")
+        self.lbl_digitos.grid(row=1, column=0, sticky="w", pady=5)
         self.digitos_var = tk.IntVar(value=8)
-        self.entry_digitos = ttk.Entry(params_frame, textvariable=self.digitos_var, width=10)
-        self.entry_digitos.grid(row=0, column=3, sticky="w")
+        self.entry_digitos = ttk.Entry(params_frame, textvariable=self.digitos_var, width=12)
+        self.entry_digitos.grid(row=1, column=1, sticky="w")
 
-        self.lbl_a_mult = ttk.Label(params_frame, text="a multiplicativo:")
-        self.lbl_a_mult.grid(row=0, column=4, sticky="w", padx=(20, 0))
+        self.lbl_a_mult = ttk.Label(params_frame, text="a multip.:")
+        self.lbl_a_mult.grid(row=2, column=0, sticky="w", pady=5)
         self.a_mult_var = tk.IntVar(value=1664525)
         self.entry_a_mult = ttk.Entry(params_frame, textvariable=self.a_mult_var, width=12)
-        self.entry_a_mult.grid(row=0, column=5, sticky="w")
+        self.entry_a_mult.grid(row=2, column=1, sticky="w")
 
-        self.lbl_m = ttk.Label(params_frame, text="m multiplicativo/aditivo:")
-        self.lbl_m.grid(row=0, column=6, sticky="w", padx=(20, 0))
+        self.lbl_m = ttk.Label(params_frame, text="m:")
+        self.lbl_m.grid(row=3, column=0, sticky="w", pady=5)
         self.m_var = tk.IntVar(value=2**32)
         self.entry_m = ttk.Entry(params_frame, textvariable=self.m_var, width=14)
-        self.entry_m.grid(row=0, column=7, sticky="w")
+        self.entry_m.grid(row=3, column=1, sticky="w")
 
-        self.lbl_corridas = ttk.Label(params_frame, text="Corridas (solo Medias/Varianza):")
-        self.lbl_corridas.grid(row=0, column=8, sticky="w", padx=(20, 0))
+        self.lbl_corridas = ttk.Label(params_frame, text="Corridas:")
+        self.lbl_corridas.grid(row=4, column=0, sticky="w", pady=5)
         self.entry_corridas = ttk.Entry(
             params_frame,
             textvariable=self.corridas_var,
             width=10,
         )
-        self.entry_corridas.grid(row=0, column=9, sticky="w")
+        self.entry_corridas.grid(row=4, column=1, sticky="w")
 
 
         # Seleccion de pruebas
-        pruebas_frame = ttk.LabelFrame(top, text="Pruebas de validacion", padding=10)
+        pruebas_frame = ttk.Labelframe(right_column, text="Pruebas de validacion", padding=10, bootstyle="info")
         pruebas_frame.pack(fill="x", pady=5)
 
         self.pruebas_vars = {
@@ -125,22 +140,27 @@ class App(tk.Tk):
             "Rachas": tk.BooleanVar(value=False),
         }
         col = 0
+        row = 0
         for nombre, var in self.pruebas_vars.items():
             ttk.Checkbutton(
                 pruebas_frame,
                 text=nombre,
                 variable=var,
                 command=self._actualizar_estado_corridas,
-            ).grid(row=0, column=col, sticky="w", padx=6)
-            col += 1
+            ).grid(row=row, column=col, sticky="w", padx=6, pady=3)
+            row += 1
+            if row == 3:
+                row = 0
+                col = 1
         self._actualizar_estado_corridas()
         self._actualizar_parametros_metodos()
 
-        acciones = ttk.Frame(top)
+        # ============ SECCIÓN DE ACCIONES Y GRÁFICOS ============
+        acciones = ttk.Frame(main_container)
         acciones.pack(fill="x", pady=8)
-        ttk.Button(acciones, text="Ejecutar", command=self._ejecutar).pack(side="left")
-        ttk.Button(acciones, text="Exportar secuencias", command=self._exportar_secuencias).pack(side="left", padx=8)
-        ttk.Button(acciones, text="Exportar validaciones", command=self._exportar_validaciones).pack(side="left", padx=8)
+        ttk.Button(acciones, text="Ejecutar", command=self._ejecutar, bootstyle="success").pack(side="left")
+        ttk.Button(acciones, text="Exportar secuencias", command=self._exportar_secuencias, bootstyle="primary-outline").pack(side="left", padx=8)
+        ttk.Button(acciones, text="Exportar validaciones", command=self._exportar_validaciones, bootstyle="primary-outline").pack(side="left", padx=8)
 
         ttk.Label(acciones, text="Corrida para graficar:").pack(side="left", padx=(20, 4))
         self.combo_corrida = ttk.Combobox(acciones, state="readonly", width=40)
@@ -163,14 +183,14 @@ class App(tk.Tk):
         )
         self.combo_grafico.set("Histograma")
         self.combo_grafico.pack(side="left")
-        ttk.Button(acciones, text="Mostrar grafico", command=self._mostrar_grafico).pack(side="left", padx=8)
+        ttk.Button(acciones, text="Mostrar grafico", command=self._mostrar_grafico, bootstyle="info").pack(side="left", padx=8)
 
-        # Tablas
-        tablas = ttk.Panedwindow(self, orient=tk.VERTICAL)
-        tablas.pack(fill="both", expand=True, padx=10, pady=10)
+        # ============ SECCIÓN DE TABLAS ============
+        tablas = ttk.Panedwindow(main_container, orient=tk.VERTICAL)
+        tablas.pack(fill="both", expand=True, pady=(10, 0))
 
-        frame_seq = ttk.LabelFrame(tablas, text="Secuencias generadas (exportables)", padding=8)
-        frame_val = ttk.LabelFrame(tablas, text="Resultados de validacion", padding=8)
+        frame_seq = ttk.Labelframe(tablas, text="Secuencias generadas (exportables)", padding=8, bootstyle="secondary")
+        frame_val = ttk.Labelframe(tablas, text="Resultados de validacion", padding=8, bootstyle="secondary")
         tablas.add(frame_seq, weight=3)
         tablas.add(frame_val, weight=2)
 
