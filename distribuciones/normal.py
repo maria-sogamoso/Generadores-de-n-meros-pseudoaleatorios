@@ -10,6 +10,7 @@ Formulas base:
 """
 
 import math
+from statistics import NormalDist
 
 
 class GeneradorDistribucionNormal:
@@ -28,6 +29,7 @@ class GeneradorDistribucionNormal:
 
     # Constante: 2π precalculada para evitar recomputarla en cada iteración
     _DOS_PI: float = 2.0 * math.pi
+    _NORMAL_STD: NormalDist = NormalDist(mu=0.0, sigma=1.0)
 
     def __init__(self, mu: float = 0.0, sigma: float = 1.0):
         """Inicializa el generador.
@@ -71,14 +73,12 @@ class GeneradorDistribucionNormal:
 
         muestra: list[float] = []
 
-        # Procesar la lista en pares: (uniformes_base[0], uniformes_base[1]),
-        # (uniformes_base[2], uniformes_base[3]), ...
+        # Procesar pares completos con Box-Muller.
+        n = len(uniformes_base)
         i = 0
-        while i < len(uniformes_base):
+        while i + 1 < n:
             u1 = uniformes_base[i]
-
-            # Si queda un elemento sueldo (n impar), usar U₂ = 0.5 como neutro
-            u2 = uniformes_base[i + 1] if i + 1 < len(uniformes_base) else 0.5
+            u2 = uniformes_base[i + 1]
 
             z1, z2 = self._transformacion_box_muller(u1, u2)
 
@@ -86,7 +86,12 @@ class GeneradorDistribucionNormal:
             muestra.append(self.mu + self.sigma * z1)
             muestra.append(self.mu + self.sigma * z2)
 
-            i += 2  # Avanzar al siguiente par
+            i += 2
+
+        # Si n es impar, transformar el último uniforme con inversa normal.
+        if n % 2 != 0:
+            z = self._inversa_normal_estandar(uniformes_base[-1])
+            muestra.append(self.mu + self.sigma * z)
 
         return muestra
 
@@ -107,6 +112,10 @@ class GeneradorDistribucionNormal:
         z2 = radio * math.sin(angulo)
 
         return z1, z2
+
+    def _inversa_normal_estandar(self, u: float) -> float:
+        """Obtiene z tal que P(Z <= z) = u para Z ~ N(0, 1)."""
+        return self._NORMAL_STD.inv_cdf(u)
 
     def _validar_entrada(self, uniformes_base: list[float]) -> None:
         """Valida que la lista de entrada no sea vacia y que todos sus valores esten en (0, 1)."""

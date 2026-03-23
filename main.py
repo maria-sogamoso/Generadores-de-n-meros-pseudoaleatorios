@@ -10,16 +10,15 @@ from app_services import (
     SemillasService,
     ValidacionService,
 )
-
-
 class App(ttk.Window):
     def __init__(self):
         super().__init__(themename="flatly")
         self.title("Generador de Numeros Pseudoaleatorios - Interfaz")
-        self.geometry("1300x760")
+        self.geometry("1800x800")
 
         self.semillas_archivo = []
         self.secuencias = {}  # clave corrida -> lista Ri
+        self.corridas_info = {}  # clave corrida -> (metodo, semilla, seq)
         self.corridas_var = tk.IntVar(value=30)
 
         self.semillas_service = SemillasService()
@@ -68,8 +67,24 @@ class App(ttk.Window):
         self.lbl_archivo.grid(row=1, column=2, sticky="w")
 
         # Seleccion de metodos
-        metodos_frame = ttk.Labelframe(left_column, text="Metodos de generacion", padding=10, bootstyle="success")
-        metodos_frame.pack(fill="x", pady=5)
+        metodos_container = ttk.Frame(left_column)
+        metodos_container.pack(fill="x", pady=5)
+
+        metodos_frame = ttk.Labelframe(
+            metodos_container,
+            text="Metodos de generacion base",
+            padding=10,
+            bootstyle="success",
+        )
+        metodos_frame.pack(side="left", fill="x", expand=True)
+
+        dist_frame = ttk.Labelframe(
+            metodos_container,
+            text="Metodos por distribucion",
+            padding=10,
+            bootstyle="warning",
+        )
+        dist_frame.pack(side="left", fill="x", expand=True, padx=(8, 0))
 
         self.metodos_vars = {
             "Cuadrados Medios": tk.BooleanVar(value=True),
@@ -86,6 +101,24 @@ class App(ttk.Window):
                 command=self._actualizar_parametros_metodos,
             ).grid(row=col, column=0, sticky="w", padx=6, pady=3)
             col += 1
+
+        self.metodos_distribucion_vars = {
+            "Distribucion Uniforme": tk.BooleanVar(value=False),
+            "Distribucion Normal": tk.BooleanVar(value=False),
+        }
+        self.chk_distribuciones = []
+
+        row = 0
+        for nombre, var in self.metodos_distribucion_vars.items():
+            chk = ttk.Checkbutton(
+                dist_frame,
+                text=nombre,
+                variable=var,
+                command=self._actualizar_estado_distribuciones,
+            )
+            chk.grid(row=row, column=0, sticky="w", padx=6, pady=3)
+            self.chk_distribuciones.append(chk)
+            row += 1
 
         # Columna derecha: Parámetros y Pruebas
         right_column = ttk.Frame(config_frame)
@@ -126,6 +159,30 @@ class App(ttk.Window):
         )
         self.entry_corridas.grid(row=4, column=1, sticky="w")
 
+        self.lbl_u_a = ttk.Label(params_frame, text="Uniforme a:")
+        self.lbl_u_a.grid(row=5, column=0, sticky="w", pady=5)
+        self.uniforme_a_var = tk.DoubleVar(value=0.0)
+        self.entry_u_a = ttk.Entry(params_frame, textvariable=self.uniforme_a_var, width=12)
+        self.entry_u_a.grid(row=5, column=1, sticky="w")
+
+        self.lbl_u_b = ttk.Label(params_frame, text="Uniforme b:")
+        self.lbl_u_b.grid(row=6, column=0, sticky="w", pady=5)
+        self.uniforme_b_var = tk.DoubleVar(value=1.0)
+        self.entry_u_b = ttk.Entry(params_frame, textvariable=self.uniforme_b_var, width=12)
+        self.entry_u_b.grid(row=6, column=1, sticky="w")
+
+        self.lbl_n_mu = ttk.Label(params_frame, text="Normal mu:")
+        self.lbl_n_mu.grid(row=7, column=0, sticky="w", pady=5)
+        self.normal_mu_var = tk.DoubleVar(value=0.0)
+        self.entry_n_mu = ttk.Entry(params_frame, textvariable=self.normal_mu_var, width=12)
+        self.entry_n_mu.grid(row=7, column=1, sticky="w")
+
+        self.lbl_n_sigma = ttk.Label(params_frame, text="Normal sigma:")
+        self.lbl_n_sigma.grid(row=8, column=0, sticky="w", pady=5)
+        self.normal_sigma_var = tk.DoubleVar(value=1.0)
+        self.entry_n_sigma = ttk.Entry(params_frame, textvariable=self.normal_sigma_var, width=12)
+        self.entry_n_sigma.grid(row=8, column=1, sticky="w")
+
 
         # Seleccion de pruebas
         pruebas_frame = ttk.Labelframe(right_column, text="Pruebas de validacion", padding=10, bootstyle="info")
@@ -154,6 +211,7 @@ class App(ttk.Window):
                 col = 1
         self._actualizar_estado_corridas()
         self._actualizar_parametros_metodos()
+        self._actualizar_estado_distribuciones()
 
         # ============ SECCIÓN DE ACCIONES Y GRÁFICOS ============
         acciones = ttk.Frame(main_container)
@@ -259,6 +317,28 @@ class App(ttk.Window):
         )
         self._set_visibilidad_parametro(self.lbl_corridas, self.entry_corridas, requiere_corridas)
 
+    def _actualizar_estado_distribuciones(self):
+        hay_base = any(var.get() for var in self.metodos_vars.values())
+        usa_uniforme = self.metodos_distribucion_vars["Distribucion Uniforme"].get()
+        usa_normal = self.metodos_distribucion_vars["Distribucion Normal"].get()
+
+        if not hay_base:
+            for var in self.metodos_distribucion_vars.values():
+                var.set(False)
+            usa_uniforme = False
+            usa_normal = False
+
+        for chk in self.chk_distribuciones:
+            if hay_base:
+                chk.configure(state="normal")
+            else:
+                chk.configure(state="disabled")
+
+        self._set_visibilidad_parametro(self.lbl_u_a, self.entry_u_a, usa_uniforme)
+        self._set_visibilidad_parametro(self.lbl_u_b, self.entry_u_b, usa_uniforme)
+        self._set_visibilidad_parametro(self.lbl_n_mu, self.entry_n_mu, usa_normal)
+        self._set_visibilidad_parametro(self.lbl_n_sigma, self.entry_n_sigma, usa_normal)
+
     def _actualizar_parametros_metodos(self):
         usa_cuadrados = self.metodos_vars["Cuadrados Medios"].get()
         usa_multiplicativo = self.metodos_vars["Congruencial Multiplicativo"].get()
@@ -268,6 +348,7 @@ class App(ttk.Window):
         self._set_visibilidad_parametro(self.lbl_digitos, self.entry_digitos, usa_cuadrados)
         self._set_visibilidad_parametro(self.lbl_a_mult, self.entry_a_mult, usa_multiplicativo)
         self._set_visibilidad_parametro(self.lbl_m, self.entry_m, usa_m)
+        self._actualizar_estado_distribuciones()
 
     @staticmethod
     def _set_visibilidad_parametro(label_widget, entry_widget, visible):
@@ -289,9 +370,20 @@ class App(ttk.Window):
             m=self.m_var.get(),
         )
 
-    def _ejecutar_pruebas(self, seq):
+    def _ejecutar_pruebas(self, seq, metodo):
         pruebas = [p for p, v in self.pruebas_vars.items() if v.get()]
-        return self.validacion_service.ejecutar_pruebas(seq, pruebas)
+        params_dist = {
+            "a": self.uniforme_a_var.get(),
+            "b": self.uniforme_b_var.get(),
+            "mu": self.normal_mu_var.get(),
+            "sigma": self.normal_sigma_var.get(),
+        }
+        return self.validacion_service.ejecutar_pruebas(
+            seq,
+            pruebas,
+            metodo=metodo,
+            params_dist=params_dist,
+        )
 
     def _ejecutar(self):
         try:
@@ -301,8 +393,16 @@ class App(ttk.Window):
 
             semillas = self._obtener_semillas()
             metodos = [m for m, v in self.metodos_vars.items() if v.get()]
-            if not metodos:
+            metodos_distribucion = [
+                m for m, v in self.metodos_distribucion_vars.items() if v.get()
+            ]
+
+            if not metodos and not metodos_distribucion:
                 raise ValueError("Selecciona al menos un metodo.")
+            if metodos_distribucion and not metodos:
+                raise ValueError(
+                    "Para usar distribuciones debes seleccionar al menos un generador base."
+                )
 
             requiere_corridas = (
                 self.pruebas_vars["Medias"].get()
@@ -322,6 +422,9 @@ class App(ttk.Window):
             for i in self.tabla_val.get_children():
                 self.tabla_val.delete(i)
             self.secuencias.clear()
+            self.corridas_info.clear()
+
+            corridas_totales = {}
 
             for metodo in metodos:
                 corridas = self._generar_por_metodo(
@@ -330,18 +433,33 @@ class App(ttk.Window):
                     pasos,
                     corridas=total_corridas,
                 )
-                for corrida, (met, sem, seq) in corridas.items():
-                    self.secuencias[corrida] = seq
+                corridas_totales.update(corridas)
 
-                    for i, ri in enumerate(seq, start=1):
-                        self.tabla_seq.insert("", "end", values=(corrida, met, sem, i, f"{ri:.10f}"))
+            if metodos_distribucion:
+                corridas_dist = self.generacion_service.generar_distribuciones_desde_bases(
+                    corridas_base=corridas_totales,
+                    incluir_uniforme="Distribucion Uniforme" in metodos_distribucion,
+                    incluir_normal="Distribucion Normal" in metodos_distribucion,
+                    a=self.uniforme_a_var.get(),
+                    b=self.uniforme_b_var.get(),
+                    mu=self.normal_mu_var.get(),
+                    sigma=self.normal_sigma_var.get(),
+                )
+                corridas_totales.update(corridas_dist)
 
-                    res = self._ejecutar_pruebas(seq)
-                    for prueba, ok, detalle in res:
-                        self.tabla_val.insert(
-                            "", "end",
-                            values=(corrida, prueba, "Aceptada" if ok else "Rechazada", detalle)
-                        )
+            for corrida, (met, sem, seq) in corridas_totales.items():
+                self.secuencias[corrida] = seq
+                self.corridas_info[corrida] = (met, sem, seq)
+
+                for i, ri in enumerate(seq, start=1):
+                    self.tabla_seq.insert("", "end", values=(corrida, met, sem, i, f"{ri:.10f}"))
+
+                res = self._ejecutar_pruebas(seq, met)
+                for prueba, ok, detalle in res:
+                    self.tabla_val.insert(
+                        "", "end",
+                        values=(corrida, prueba, "Aceptada" if ok else "Rechazada", detalle)
+                    )
 
             self.combo_corrida["values"] = list(self.secuencias.keys())
             if self.secuencias:
@@ -364,12 +482,32 @@ class App(ttk.Window):
 
         tipo = self.combo_grafico.get()
 
+        if tipo != "Histograma":
+            var_prueba = self.pruebas_vars.get(tipo)
+            if var_prueba is None or not var_prueba.get():
+                messagebox.showwarning(
+                    "Grafico",
+                    f"La prueba '{tipo}' no fue seleccionada. Actívala y ejecuta nuevamente.",
+                )
+                return
+
+        metodo = self.corridas_info.get(corrida, (None, None, None))[0]
+        params_dist = {
+            "a": self.uniforme_a_var.get(),
+            "b": self.uniforme_b_var.get(),
+            "mu": self.normal_mu_var.get(),
+            "sigma": self.normal_sigma_var.get(),
+        }
+
         try:
             self.graficos_service.mostrar(
                 tipo=tipo,
                 corrida=corrida,
                 seq=seq,
                 secuencias=self.secuencias,
+                metodo=metodo,
+                params_dist=params_dist,
+                corridas_info=self.corridas_info,
             )
         except Exception as e:
             messagebox.showerror("Error al graficar", str(e))
@@ -391,8 +529,6 @@ class App(ttk.Window):
             "resultados_validacion.csv",
         )
 
-
 if __name__ == "__main__":
     app = App()
     app.mainloop()
-
