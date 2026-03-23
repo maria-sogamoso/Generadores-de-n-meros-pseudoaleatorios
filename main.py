@@ -58,7 +58,16 @@ class App(ttk.Window):
         ttk.Label(semillas_frame, text="Semillas manuales (ej: 123, 456, 789):").grid(
             row=1, column=0, columnspan=2, sticky="w", pady=(6, 0)
         )
-        self.entry_semillas = ttk.Entry(semillas_frame, width=40)
+        vcmd_semillas = (
+            self.register(self._validar_entrada_semillas_manual),
+            "%P",
+        )
+        self.entry_semillas = ttk.Entry(
+            semillas_frame,
+            width=40,
+            validate="key",
+            validatecommand=vcmd_semillas,
+        )
         self.entry_semillas.grid(row=2, column=0, columnspan=2, sticky="we", pady=2)
 
         ttk.Button(
@@ -277,6 +286,11 @@ class App(ttk.Window):
 
     def _parse_semillas_texto(self, texto):
         return self.semillas_service.parsear_texto(texto)
+
+    def _validar_entrada_semillas_manual(self, nuevo_texto: str) -> bool:
+        if nuevo_texto == "":
+            return True
+        return all(ch.isdigit() or ch in ", " for ch in nuevo_texto)
 
     def _leer_semillas_archivo(self, path):
         return self.semillas_service.leer_archivo(path)
@@ -535,6 +549,7 @@ class App(ttk.Window):
             ["corrida", "prueba", "resultado", "detalle"],
             "resultados_validacion.csv",
         )
+
 
 if __name__ == "__main__":
     app = App()
