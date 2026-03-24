@@ -4,8 +4,35 @@ from scipy.stats import norm  # type: ignore
 
 
 class PruebaRachas:
+    """
+    Validación de aleatoriedad mediante prueba de Rachas.
+
+    Cuenta el número de cambios de signo (rachas) respecto a la mediana (0.5)
+    y compara la estadística Z calculada con el rango de aceptación.
+    Detecta patrones no aleatorios en la secuencia.
+    """
+
     def prueba_rachas(self, numeros_aleatorios, alpha=0.05):
-        # Datos para la prueba de rachas
+        """
+        Ejecuta prueba de Rachas sobre una secuencia.
+
+        Parameters
+        ----------
+        numeros_aleatorios : list[float]
+            Secuencia U(0,1) a validar.
+        alpha : float, optional
+            Nivel de significancia. Por defecto 0.05.
+
+        Returns
+        -------
+        bool
+            True si Z-estadístico está dentro del rango de aceptación, False en caso contrario.
+
+        Notes
+        -----
+        Cuenta rachas como cambios de signo respecto a la mediana teórica 0.5.
+        """
+      
         mediana_teorica = 0.5
         probabilidad_acumulada = 1 - alpha / 2
         z_teorico = norm.ppf(probabilidad_acumulada)

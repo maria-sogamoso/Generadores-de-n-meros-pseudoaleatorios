@@ -4,7 +4,29 @@ from scipy.stats import chi2  # type: ignore
 
 
 class PruebaPoker:
+    """
+    Validación de aleatoriedad mediante prueba de Poker.
+
+    Clasifica los primeros 5 dígitos decimales de cada número en categorías
+    poker (Quintilla, Póker, Full, Tercia, Dos Pares, Un Par, Todos Diferentes)
+    y compara las frecuencias observadas contra las esperadas usando chi-cuadrado.
+    """
+
     def clasificar_categoria(self, digitos):
+        """
+        Clasifica 5 dígitos en una categoría poker.
+
+        Parameters
+        ----------
+        digitos : str
+            String de 5 dígitos.
+
+        Returns
+        -------
+        str
+            Categoría poker: 'Todos Diferentes', 'Un Par', 'Dos Pares',
+            'Tercia', 'Full House', 'Póker', 'Quintilla'.
+        """
         distintos = len(set(digitos))
 
         if distintos == 5:
@@ -12,21 +34,29 @@ class PruebaPoker:
         if distintos == 1:
             return "Quintilla"
 
-        # Casos que requieren contar repeticiones
         conteos = sorted(Counter(digitos).values(), reverse=True)
 
         if distintos == 4:
             return "Un Par"
         if distintos == 3:
-            # Si el dígito que más se repite aparece 3 veces, es Tercia.
-            # Si no, es porque hay dos pares.
             return "Tercia" if conteos[0] == 3 else "Dos Pares"
         if distintos == 2:
-            # Si el que más se repite aparece 4 veces, es Póker.
-            # Si no (aparece 3), es Full House (3 de uno y 2 de otro).
             return "Póker" if conteos[0] == 4 else "Full House"
 
     def prueba_poker(self, numeros_aleatorios):
+        """
+        Ejecuta prueba de Poker sobre una secuencia.
+
+        Parameters
+        ----------
+        numeros_aleatorios : list[float]
+            Secuencia U(0,1) a validar.
+
+        Returns
+        -------
+        bool
+            True si chi-cuadrado calculado < chi-cuadrado teórico, False en caso contrario.
+        """
         n = len(numeros_aleatorios)
         poker_numeros = [f"{n:.5f}"[2:] for n in numeros_aleatorios]
 
@@ -62,7 +92,7 @@ class PruebaPoker:
             # Fórmula: (Ei - Oi)^2 / Ei
             chi2_calculado += ((ei - oi) ** 2) / ei
 
-        alpha = 0.05  # Nivel de significancia (5%)
+        alpha = 0.05 
 
         # Grados de libertad = número de categorías - 1
         grados_libertad = len(probabilidades) - 1

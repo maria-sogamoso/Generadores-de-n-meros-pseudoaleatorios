@@ -3,34 +3,52 @@ from scipy.stats import chi2  # type: ignore
 
 
 class PruebaChiCuadrado:
+    """
+    Validación de aleatoriedad mediante prueba Chi-Cuadrado.
+
+    Divide el intervalo [0, 1) en k intervalos iguales y compara las
+    frecuencias observadas contra las esperadas en la distribución uniforme.
+    Usa distribución chi-cuadrado con k-1 grados de libertad y α = 0.05.
+    """
+
     def prueba_chi_cuadrado(self, numeros_aleatorios, k=1000):
+        """
+        Ejecuta la prueba Chi-Cuadrado sobre una secuencia.
+
+        Parameters
+        ----------
+        numeros_aleatorios : list[float]
+            Secuencia U(0,1) a validar.
+        k : int, optional
+            Número de intervalos para dividir [0, 1). Por defecto 1000.
+
+        Returns
+        -------
+        bool
+            True si la prueba es aceptada, False si es rechazada.
+        """
         n = len(numeros_aleatorios)
         if n == 0:
             print("No se pueden realizar pruebas con una lista vacía.")
             return False
 
-        # 1. Dividir el rango [0, 1) en k intervalos iguales
-        # 2. Contar cuántos números caen en cada intervalo
+                          
         frecuencias_observadas, _ = np.histogram(
             numeros_aleatorios, bins=k, range=(0, 1)
         )
-
-        # 3. Calcular la frecuencia esperada (n/k para cada intervalo)
+         
         frecuencia_esperada = n / k
 
-        # 4. Calcular el estadístico de chi-cuadrado
         chi_cuadrado_calculado = sum(
             (fo - frecuencia_esperada) ** 2 / frecuencia_esperada
             for fo in frecuencias_observadas
         )
 
-        # 5. Obtener el valor crítico de chi-cuadrado para k-1 grados de libertad y un nivel de significancia (alpha=0.05)
 
         alpha = 0.05
         grados_libertad = k - 1
         chi_cuadrado_teorico = chi2.ppf(1 - alpha, grados_libertad)
 
-        # 6. Comparar el estadístico calculado con el valor teórico
         if chi_cuadrado_calculado < chi_cuadrado_teorico:
             print("Prueba de chi-cuadrado: Aceptada")
             print(f"  Chi-cuadrado calculado: {chi_cuadrado_calculado:.8f}")

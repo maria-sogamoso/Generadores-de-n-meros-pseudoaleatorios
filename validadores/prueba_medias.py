@@ -2,22 +2,42 @@ from scipy.stats import norm  # type: ignore
 
 
 class PruebaMedias:
+    """
+    Validación de aleatoriedad mediante prueba de Medias.
+
+    Verifica si la media muestral está dentro del intervalo de confianza
+    esperado para una distribución uniforme U(0,1) con media teórica 0.5.
+    Usa distribución normal con α = 0.05 (95% confianza).
+    """
+
     def prueba_medias(self, numeros_aleatorios):
         """
-        Prueba de medias usando distribución normal (Z).
+        Ejecuta prueba de Medias sobre una secuencia.
 
-        Se verifica si la media calculada está dentro del intervalo:
-        LLR = 0.5 - Z_α/2 * (1/√12n)
-        LSR = 0.5 + Z_α/2 * (1/√12n)
+        Parameters
+        ----------
+        numeros_aleatorios : list[float]
+            Secuencia U(0,1) a validar.
+
+        Returns
+        -------
+        bool
+            True si media está dentro del intervalo de aceptación, False en caso contrario.
+
+        Notes
+        -----
+        Intervalo de aceptación:
+        LLR = 0.5 - Z_α/2 * √(1/12n)
+        LSR = 0.5 + Z_α/2 * √(1/12n)
         """
         n = len(numeros_aleatorios)
         media_calculada = sum(numeros_aleatorios) / n
         media_teorica = 0.5
 
-        alpha = 0.05  # Nivel de aceptación (95% de confianza)
+        alpha = 0.05 
 
-        # Valor crítico Z para la distribución normal
-        Z_alpha_2 = norm.ppf(1 - alpha / 2)  # 1.96 para α=0.05
+        
+        Z_alpha_2 = norm.ppf(1 - alpha / 2) 
 
         # Límites
         desviacion = (1 / (12 * n)) ** 0.5
