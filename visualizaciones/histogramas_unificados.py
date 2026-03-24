@@ -1,3 +1,5 @@
+"""Utilidades para visualizar histogramas de generadores y distribuciones."""
+
 import matplotlib.pyplot as plt
 import numpy as np
 from distribuciones.normal import GeneradorDistribucionNormal
@@ -94,7 +96,7 @@ def _visualizar_muestra(
     xticks=None,
     x_label="Valor",
 ):
-    """Orquesta la salida de estadisticas + histogramas para evitar repeticion."""
+    """Muestra estadísticas y dos histogramas para la misma muestra."""
     _imprimir_estadisticas(numeros, esperado_texto)
     _graficar_histogramas(
         numeros=numeros,
@@ -107,7 +109,15 @@ def _visualizar_muestra(
 
 
 def visualizar_histograma_cuadrados_medios(semilla, digitos, pasos, bins=50):
-    """Visualiza la distribucion del metodo de cuadrados medios."""
+    """Grafica histogramas del método Cuadrados Medios.
+
+    Parameters
+    ----------
+    semilla : int
+    digitos : int
+    pasos : int
+    bins : int, optional
+    """
     gen = GeneradorCuadradosMedios(semilla=semilla, digitos=digitos)
     numeros = gen.siguiente_Ri_Cuadrados_Medios(pasos)
 
@@ -128,7 +138,14 @@ def visualizar_histograma_cuadrados_medios(semilla, digitos, pasos, bins=50):
 
 
 def visualizar_histograma_congruencia_lineal(semilla, pasos, bins=50):
-    """Visualiza la distribucion del metodo de congruencia lineal."""
+    """Grafica histogramas del método Congruencia Lineal.
+
+    Parameters
+    ----------
+    semilla : int
+    pasos : int
+    bins : int, optional
+    """
     gen = GeneradorCongruenciaLineal(semilla=semilla)
     numeros = gen.siguiente_Ri_Congruencia_Lineal(pasos)
 
@@ -151,7 +168,16 @@ def visualizar_histograma_congruencia_lineal(semilla, pasos, bins=50):
 def visualizar_histograma_congruencial_multiplicativo(
     semilla, pasos, a=1664525, m=2**32, bins=50
 ):
-    """Visualiza la distribucion del metodo congruencial multiplicativo."""
+    """Grafica histogramas del método Congruencial Multiplicativo.
+
+    Parameters
+    ----------
+    semilla : int
+    pasos : int
+    a : int, optional
+    m : int, optional
+    bins : int, optional
+    """
     gen = GeneradorCongruencialMultiplicativo(semilla=semilla, a=a, m=m)
     numeros = gen.siguiente_Ri_Congruencial_Multiplicativo(pasos)
 
@@ -174,7 +200,15 @@ def visualizar_histograma_congruencial_multiplicativo(
 def visualizar_histograma_congruencial_aditivo(
     semillas_iniciales, pasos, m=2**32, bins=50
 ):
-    """Visualiza la distribucion del metodo congruencial aditivo."""
+    """Grafica histogramas del método Congruencial Aditivo.
+
+    Parameters
+    ----------
+    semillas_iniciales : list[int]
+    pasos : int
+    m : int, optional
+    bins : int, optional
+    """
     gen = GeneradorCongruencialAditivo(semillas_iniciales=semillas_iniciales, m=m)
     numeros = gen.siguiente_Ri_Congruencial_Aditivo(pasos)
 
@@ -201,7 +235,16 @@ def visualizar_histograma_distribucion_uniforme(
     b=1.0,
     bins=50,
 ):
-    """Visualiza la distribucion uniforme U(a, b) usando base congruencia lineal."""
+    """Grafica histogramas para una distribución Uniforme U(a, b).
+
+    Parameters
+    ----------
+    semilla : int
+    pasos : int
+    a : float, optional
+    b : float, optional
+    bins : int, optional
+    """
     gen_base = GeneradorCongruenciaLineal(semilla=semilla)
     uniformes_base = gen_base.siguiente_Ri_Congruencia_Lineal(pasos)
 
@@ -231,7 +274,16 @@ def visualizar_histograma_distribucion_normal(
     sigma=1.0,
     bins=50,
 ):
-    """Visualiza la distribucion normal N(mu, sigma^2) con Box-Muller."""
+    """Grafica histogramas para una distribución Normal N(mu, sigma^2).
+
+    Parameters
+    ----------
+    semilla : int
+    pasos : int
+    mu : float, optional
+    sigma : float, optional
+    bins : int, optional
+    """
     gen_base = GeneradorCongruenciaLineal(semilla=semilla)
     uniformes_base = gen_base.siguiente_Ri_Congruencia_Lineal(pasos)
 

@@ -3,7 +3,7 @@ from collections import Counter
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.stats import chi2, ksone, norm  # type: ignore
+from scipy.stats import chi2, ksone, norm  
 
 
 def graficar_kolmogorov_smirnov(numeros_aleatorios, alpha=0.05):
@@ -252,7 +252,7 @@ def graficar_prueba_rachas(numeros_aleatorios, alpha=0.05):
     z_min = -z_teorico
     z_max = z_teorico
 
-    # Transformamos el intervalo en Z a intervalo en numero de rachas.
+   
     rachas_min = rachas_esperadas + z_min * math.sqrt(varianza_rachas)
     rachas_max = rachas_esperadas + z_max * math.sqrt(varianza_rachas)
 
@@ -547,7 +547,6 @@ def graficar_prueba_varianza(
     ax.set_ylabel("Varianza")
     ax.grid(alpha=0.3)
 
-    # Ticks: 0 para distribucion + algunos experimentos para no saturar
     if len(experiment_ids) <= 20:
         xticks = np.concatenate(([0], experiment_ids))
     else:
