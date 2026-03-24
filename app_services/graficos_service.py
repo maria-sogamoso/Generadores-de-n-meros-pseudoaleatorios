@@ -14,8 +14,42 @@ from visualizaciones.graficas_de_validacion import (
 
 
 class GraficosService:
+    """
+    Servicio para generar y mostrar gráficos de validación estadística.
+
+    Proporciona métodos para graficar histogramas y pruebas de validación
+    de secuencias pseudoaleatorias (Histograma, Kolmogorov-Smirnov, Poker,
+    Rachas, Chi-Cuadrado, Medias y Varianza).
+
+    Notes
+    -----
+    - Todos los métodos son estáticos, no requiere instanciación.
+    - Transforma automáticamente distribuciones a U(0,1) para validación.
+    - Usa matplotlib para visualización.
+    - Soporta filtrado por método de generación en gráficos multivariados.
+    """
     @staticmethod
     def _transformar_seq_para_validacion(seq, metodo, params_dist):
+        """
+        Transforma una secuencia según su distribución a U(0,1) para validar.
+
+        Delegación a ValidacionService para convertir distribuciones
+        (Uniforme, Normal) a la escala estándar U(0,1).
+
+        Parameters
+        ----------
+        seq : list[float]
+            Secuencia a transformar.
+        metodo : str or None
+            Nombre de la distribución (Distribucion Uniforme, Distribucion Normal).
+        params_dist : dict
+            Parámetros de distribución (a, b, mu, sigma).
+
+        Returns
+        -------
+        list[float]
+            Secuencia transformada a [0, 1].
+        """
         return ValidacionService._transformar_para_validacion(
             seq,
             metodo=metodo,
@@ -24,6 +58,24 @@ class GraficosService:
 
     @staticmethod
     def _obtener_rango_histograma(seq, metodo, params_dist):
+        """
+        Calcula el rango apropiado para el histograma según la distribución.
+
+        Parameters
+        ----------
+        seq : list[float]
+            Secuencia a graficar (se usa solo para contexto).
+        metodo : str or None
+            Nombre de la distribución.
+        params_dist : dict
+            Parámetros de distribución (a, b, mu, sigma).
+
+        Returns
+        -------
+        tuple[float, float] or None
+            Tupla (min, max) para el rango del histograma.
+            None si no se puede determinar.
+        """
         if metodo == "Distribucion Uniforme":
             a = float(params_dist.get("a", 0.0))
             b = float(params_dist.get("b", 1.0))
@@ -48,6 +100,36 @@ class GraficosService:
         params_dist=None,
         corridas_info=None,
     ):
+        """
+        Muestra un gráfico según el tipo de validación solicitado.
+
+        Genera histogramas o gráficos de pruebas de validación estadística.
+        Para pruebas multivariadas (Medias, Varianza) procesa todas las
+        secuencias proporcionadas.
+
+        Parameters
+        ----------
+        tipo : str
+            Tipo de gráfico. Valores válidos: 'Histograma', 'Kolmogorov Smirnov',
+            'Poker', 'Rachas', 'Chi Cuadrado', 'Medias', 'Varianza'.
+        corrida : str
+            Nombre/descripción de la corrida actual (para título).
+        seq : list[float]
+            Secuencia a graficar (para Histograma).
+        secuencias : dict[str, list[float]]
+            Diccionario con todas las secuencias (para Medias, Varianza).
+        metodo : str, optional
+            Nombre de la distribución para transformación.
+        params_dist : dict, optional
+            Parámetros de distribución por defecto {a: 0, b: 1, mu: 0, sigma: 1}.
+        corridas_info : dict, optional
+            Información sobre cada corrida (método usado) para filtrado.
+
+        Returns
+        -------
+        None
+            Muestra el gráfico usando matplotlib.pyplot.show().
+        """
         if params_dist is None:
             params_dist = {"a": 0.0, "b": 1.0, "mu": 0.0, "sigma": 1.0}
 
@@ -109,6 +191,33 @@ class GraficosService:
         params_dist=None,
         metodo_objetivo=None,
     ):
+        """
+        Grafica medias muestrales con intervalos de confianza.
+
+        Calcula la media y error estándar para cada secuencia, filtra por
+        método si se especifica, y muestra un gráfico con barras de error.
+
+        Parameters
+        ----------
+        secuencias : dict[str, list[float]]
+            Diccionario de secuencias indexadas por clave de corrida.
+        corridas_info : dict, optional
+            Información de cada corrida (método usado).
+        params_dist : dict, optional
+            Parámetros de distribución para transformación.
+        metodo_objetivo : str, optional
+            Si se establece, solo grafica secuencias de este método.
+
+        Returns
+        -------
+        None
+            Muestra el gráfico usando visualizaciones.graficar_prueba_medias().
+
+        Raises
+        ------
+        ValueError
+            Si no hay corridas con datos suficientes.
+        """
         if not secuencias:
             raise ValueError("No hay corridas disponibles para graficar medias.")
 
@@ -165,6 +274,34 @@ class GraficosService:
         params_dist=None,
         metodo_objetivo=None,
     ):
+        """
+        Grafica varianzas muestrales con intervalos de confianza chi-cuadrado.
+
+        Calcula la varianza muestral para cada secuencia y sus intervalos
+        de confianza usando la distribución chi-cuadrado, filtra por método
+        si se especifica.
+
+        Parameters
+        ----------
+        secuencias : dict[str, list[float]]
+            Diccionario de secuencias indexadas por clave de corrida.
+        corridas_info : dict, optional
+            Información de cada corrida (método usado).
+        params_dist : dict, optional
+            Parámetros de distribución para transformación.
+        metodo_objetivo : str, optional
+            Si se establece, solo grafica secuencias de este método.
+
+        Returns
+        -------
+        None
+            Muestra el gráfico usando visualizaciones.graficar_prueba_varianza().
+
+        Raises
+        ------
+        ValueError
+            Si no hay corridas con datos suficientes.
+        """
         if not secuencias:
             raise ValueError("No hay corridas disponibles para graficar varianza.")
 

@@ -10,12 +10,60 @@ from contextlib import redirect_stdout
 
 
 class ValidacionService:
+    """
+    Servicio para ejecutar pruebas de validación estadística sobre secuencias.
+
+    Proporciona métodos para ejecutar diversas pruebas de bondad de ajuste
+    (Chi-Cuadrado, Kolmogorov-Smirnov, Medias, Varianza, Poker, Rachas)
+    sobre secuencias de números pseudoaleatorios.
+
+    Attributes
+    ----------
+    _NORMAL_STD : NormalDist
+        Distribución normal estándar N(0, 1) para transformaciones.
+    _ESCALA_TRUNCADO : int
+        Escala para truncar valores a 5 decimales (100000).
+
+    Notes
+    -----
+    - Todos los métodos son estáticos, no requiere instanciación.
+    - Transforma automáticamente distribuciones (Uniforme, Normal) a U(0,1).
+    - Trunca valores a 5 decimales para consistencia.
+    - Captura y compacta la salida de pruebas para tablas/CSV.
+    """
+
     _NORMAL_STD = NormalDist(mu=0.0, sigma=1.0)
     _ESCALA_TRUNCADO = 100000
 
     @staticmethod
     def _transformar_para_validacion(seq, metodo=None, params_dist=None):
-        """Transforma secuencias de distribuciones a U(0,1) para validar con pruebas actuales."""
+        """
+        Transforma secuencias de distribuciones a U(0,1) para validación.
+
+        Invierte transformaciones de distribuciones (Uniforme, Normal) para
+        recuperar valores en el dominio estándar U(0,1) al cual están
+        calibradas las pruebas de validación.
+
+        Parameters
+        ----------
+        seq : list[float]
+            Secuencia a transformar.
+        metodo : str or None
+            Nombre de la distribución. Valores: 'Distribucion Uniforme',
+            'Distribucion Normal', o None para no transformar.
+        params_dist : dict, optional
+            Parámetros de la distribución (a, b, mu, sigma).
+
+        Returns
+        -------
+        list[float]
+            Secuencia transformada a [0, 1], clipeada a [1e-12, 1-1e-12].
+
+        Raises
+        ------
+        ValueError
+            Si a >= b para Uniforme, o si sigma <= 0 para Normal.
+        """
         if metodo == "Distribucion Uniforme":
             if not params_dist:
                 return seq
@@ -42,13 +90,39 @@ class ValidacionService:
 
     @staticmethod
     def _truncar_a_5_decimales(seq):
-        """Trunca cada valor a 5 decimales sin redondeo."""
+        """
+        Trunca cada valor a 5 decimales sin redondeo.
+
+        Parameters
+        ----------
+        seq : list[float]
+            Secuencia a truncar.
+
+        Returns
+        -------
+        list[float]
+            Secuencia truncada (no redondeada) a 5 decimales.
+        """
         escala = ValidacionService._ESCALA_TRUNCADO
         return [int(float(x) * escala) / escala for x in seq]
 
     @staticmethod
     def _compactar_salida(texto):
-        """Convierte la salida multilinea de consola en una linea util para tabla/csv."""
+        """
+        Convierte salida multilinea de consola en una línea para tabla/CSV.
+
+        Filtra líneas vacías y cabeceras, y une el resultado con " | ".
+
+        Parameters
+        ----------
+        texto : str
+            Salida multilinea de una prueba.
+
+        Returns
+        -------
+        str
+            Resultado compactado en una sola línea.
+        """
         if not texto:
             return ""
         lineas = []
@@ -68,7 +142,19 @@ class ValidacionService:
 
     @staticmethod
     def _ejecutar_y_capturar(funcion):
-        """Ejecuta una prueba capturando su salida impresa y retornando (ok, detalle)."""
+        """
+        Ejecuta una prueba capturando su salida impresa sin bloquear stdout.
+
+        Parameters
+        ----------
+        funcion : callable
+            Función que ejecuta una prueba y retorna bool (pasó/falló).
+
+        Returns
+        -------
+        tuple[bool, str]
+            (resultado de prueba, salida compactada para tabla).
+        """
         buffer = io.StringIO()
         with redirect_stdout(buffer):
             ok = funcion()
@@ -82,6 +168,32 @@ class ValidacionService:
 
     @staticmethod
     def ejecutar_pruebas(seq, pruebas_activas, metodo=None, params_dist=None):
+        """
+        Ejecuta un conjunto de pruebas de validación sobre una secuencia.
+
+        Transforma la secuencia según su distribución, trunca a 5 decimales,
+        y ejecuta todas las pruebas solicitadas con parámetros automáticos.
+
+        Parameters
+        ----------
+        seq : list[float]
+            Secuencia pseudoaleatoria a validar.
+        pruebas_activas : list[str]
+            Nombres de pruebas a ejecutar. Valores válidos:
+            'Chi Cuadrado', 'Kolmogorov Smirnov', 'Medias', 'Varianza',
+            'Poker', 'Rachas'.
+        metodo : str, optional
+            Nombre de la distribución para transformación.
+        params_dist : dict, optional
+            Parámetros de distribución (a, b, mu, sigma).
+
+        Returns
+        -------
+        list[tuple[str, bool, str]]
+            Lista de resultados, cada tupla contiene
+            (nombre_prueba, pasó, detalles_compactados).
+            Si una prueba falla, pasó=False y detalles contiene el error.
+        """
         seq_validacion = ValidacionService._transformar_para_validacion(
             seq, metodo=metodo, params_dist=params_dist
         )
