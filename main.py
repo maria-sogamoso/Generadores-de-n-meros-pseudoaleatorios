@@ -49,10 +49,18 @@ class App(ttk.Window):
 
         self.modo_semilla = tk.StringVar(value="manual")
         ttk.Radiobutton(
-            semillas_frame, text="Manual", variable=self.modo_semilla, value="manual"
+            semillas_frame,
+            text="Manual",
+            variable=self.modo_semilla,
+            value="manual",
+            command=self._actualizar_modo_semilla,
         ).grid(row=0, column=0, sticky="w")
         ttk.Radiobutton(
-            semillas_frame, text="Archivo (.txt/.csv)", variable=self.modo_semilla, value="archivo"
+            semillas_frame,
+            text="Archivo (.txt/.csv)",
+            variable=self.modo_semilla,
+            value="archivo",
+            command=self._actualizar_modo_semilla,
         ).grid(row=0, column=1, sticky="w")
 
         ttk.Label(semillas_frame, text="Semillas manuales (ej: 123, 456, 789):").grid(
@@ -70,9 +78,10 @@ class App(ttk.Window):
         )
         self.entry_semillas.grid(row=2, column=0, columnspan=2, sticky="we", pady=2)
 
-        ttk.Button(
+        self.btn_cargar_archivo = ttk.Button(
             semillas_frame, text="Cargar archivo", command=self._cargar_archivo_semillas, bootstyle="secondary"
-        ).grid(row=2, column=2, padx=8)
+        )
+        self.btn_cargar_archivo.grid(row=2, column=2, padx=8)
         self.lbl_archivo = ttk.Label(semillas_frame, text="Sin archivo cargado")
         self.lbl_archivo.grid(row=1, column=2, sticky="w")
 
@@ -222,6 +231,7 @@ class App(ttk.Window):
         self._actualizar_estado_corridas()
         self._actualizar_parametros_metodos()
         self._actualizar_estado_distribuciones()
+        self._actualizar_modo_semilla()
 
         # ============ SECCIÓN DE ACCIONES Y GRÁFICOS ============
         acciones = ttk.Frame(main_container)
@@ -286,6 +296,16 @@ class App(ttk.Window):
 
     def _parse_semillas_texto(self, texto):
         return self.semillas_service.parsear_texto(texto)
+
+    def _actualizar_modo_semilla(self):
+        es_manual = self.modo_semilla.get() == "manual"
+
+        if es_manual:
+            self.entry_semillas.configure(state="normal")
+            self.btn_cargar_archivo.configure(state="disabled")
+        else:
+            self.entry_semillas.configure(state="disabled")
+            self.btn_cargar_archivo.configure(state="normal")
 
     def _validar_entrada_semillas_manual(self, nuevo_texto: str) -> bool:
         if nuevo_texto == "":

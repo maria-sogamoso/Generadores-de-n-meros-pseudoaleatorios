@@ -271,7 +271,7 @@ def graficar_prueba_rachas(numeros_aleatorios, alpha=0.05):
         rachas_max,
         color="gray",
         alpha=0.15,
-        label="Intervalo aceptacion",
+        label="Intervalo de confianza",
     )
 
     plt.title("Prueba de Rachas: Observadas vs Esperadas")
@@ -284,7 +284,7 @@ def graficar_prueba_rachas(numeros_aleatorios, alpha=0.05):
     print("\n--- Resumen Rachas ---")
     print(f"Rachas observadas: {rachas_observadas}")
     print(f"Rachas esperadas: {rachas_esperadas:.4f}")
-    print(f"Intervalo aceptacion: [{rachas_min:.4f}, {rachas_max:.4f}]")
+    print(f"Intervalo de confianza: [{rachas_min:.4f}, {rachas_max:.4f}]")
     print(f"Z estadistico: {z_estadistico:.4f}")
     print(f"Resultado: {'Aceptada' if aceptada else 'Rechazada'}")
 
