@@ -1,3 +1,17 @@
+Metadata-Version: 2.4
+Name: generador-npseudoaleatorios
+Version: 0.1.0
+Summary: Biblioteca reutilizable para generacion, transformacion y validacion de numeros pseudoaleatorios.
+Author: Mafe
+License: MIT
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: numpy>=2.0
+Requires-Dist: matplotlib>=3.8
+Requires-Dist: scipy>=1.10
+Provides-Extra: gui
+Requires-Dist: ttkbootstrap>=1.10; extra == "gui"
+
 # Generador de numeros pseudoaleatorios
 
 Este proyecto ya esta preparado para usarse como biblioteca reutilizable de Python.
