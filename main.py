@@ -296,11 +296,11 @@ class App(ttk.Window):
 
         self.tabla_seq = ttk.Treeview(
             frame_seq,
-            columns=("corrida", "metodo", "semilla", "indice", "ri"),
+            columns=("corrida", "metodo", "indice", "ri"),
             show="headings",
             height=14,
         )
-        for c, w in [("corrida", 280), ("metodo", 210), ("semilla", 120), ("indice", 90), ("ri", 160)]:
+        for c, w in [("corrida", 280), ("metodo", 240), ("indice", 90), ("ri", 160)]:
             self.tabla_seq.heading(c, text=c)
             self.tabla_seq.column(c, width=w, anchor="center")
         self.tabla_seq.pack(fill="both", expand=True)
@@ -644,7 +644,7 @@ class App(ttk.Window):
                 self.corridas_info[corrida] = (met, sem, seq_truncada)
 
                 for i, ri in enumerate(seq_truncada, start=1):
-                    self.tabla_seq.insert("", "end", values=(corrida, met, sem, i, f"{ri:.5f}"))
+                    self.tabla_seq.insert("", "end", values=(corrida, met, i, f"{ri:.5f}"))
 
                 res = self._ejecutar_pruebas(seq_truncada, met)
                 for prueba, ok, detalle in res:
@@ -693,7 +693,7 @@ class App(ttk.Window):
                 self.corridas_info[corrida] = (met, sem, seq_truncada)
 
                 for i, ri in enumerate(seq_truncada, start=1):
-                    self.tabla_seq.insert("", "end", values=(corrida, met, sem, i, f"{ri:.5f}"))
+                    self.tabla_seq.insert("", "end", values=(corrida, met, i, f"{ri:.5f}"))
 
             self.combo_corrida["values"] = list(self.secuencias.keys())
             if self.secuencias:
