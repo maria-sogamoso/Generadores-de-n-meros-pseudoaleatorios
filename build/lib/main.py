@@ -216,13 +216,13 @@ class App(ttk.Window):
         self.entry_u_b = ttk.Entry(params_frame, textvariable=self.uniforme_b_var, width=12)
         self.entry_u_b.grid(row=6, column=1, sticky="w")
 
-        self.lbl_n_mu = ttk.Label(params_frame, text="Normal/Media:")
+        self.lbl_n_mu = ttk.Label(params_frame, text="Normal mu:")
         self.lbl_n_mu.grid(row=7, column=0, sticky="w", pady=5)
         self.normal_mu_var = tk.DoubleVar(value=0.0)
         self.entry_n_mu = ttk.Entry(params_frame, textvariable=self.normal_mu_var, width=12)
         self.entry_n_mu.grid(row=7, column=1, sticky="w")
 
-        self.lbl_n_sigma = ttk.Label(params_frame, text="Normal/Desviacion estandar:")
+        self.lbl_n_sigma = ttk.Label(params_frame, text="Normal sigma:")
         self.lbl_n_sigma.grid(row=8, column=0, sticky="w", pady=5)
         self.normal_sigma_var = tk.DoubleVar(value=1.0)
         self.entry_n_sigma = ttk.Entry(params_frame, textvariable=self.normal_sigma_var, width=12)
@@ -388,11 +388,7 @@ class App(ttk.Window):
                 raise ValueError("El archivo no contiene semillas validas.")
             self.semillas_archivo = semillas
             self.lbl_archivo.config(text=f"Archivo cargado: {path}")
-            semillas_texto = ", ".join(str(s) for s in semillas)
-            messagebox.showinfo(
-                "Semillas",
-                f"Se cargaron {len(semillas)} semillas: {semillas_texto}",
-            )
+            messagebox.showinfo("Semillas", f"Se cargaron {len(semillas)} semillas.")
         except Exception as e:
             messagebox.showerror("Error al cargar archivo", str(e))
 
