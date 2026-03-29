@@ -91,6 +91,33 @@ class GraficosService:
         return (0, 1)
 
     @staticmethod
+    def _calcular_intervalos_frecuencias(seq, cantidad_intervalos=30):
+        """Calcula limites y frecuencias usando min/max y ancho fijo."""
+        minimo = min(seq)
+        maximo = max(seq)
+
+        if minimo == maximo:
+            intervalos = [minimo for _ in range(cantidad_intervalos)]
+            frecuencias = [len(seq)] + [0] * (cantidad_intervalos - 1)
+            return intervalos, frecuencias
+
+        ancho_intervalo = (maximo - minimo) / cantidad_intervalos
+        intervalos = [minimo]
+        for _ in range(1, cantidad_intervalos):
+            intervalos.append(intervalos[-1] + ancho_intervalo)
+
+        frecuencias = [0] * cantidad_intervalos
+        for valor in seq:
+            indice = int((valor - minimo) / ancho_intervalo)
+            if indice < 0:
+                indice = 0
+            elif indice >= cantidad_intervalos:
+                indice = cantidad_intervalos - 1
+            frecuencias[indice] += 1
+
+        return intervalos, frecuencias
+
+    @staticmethod
     def mostrar(
         tipo,
         corrida,
@@ -134,15 +161,40 @@ class GraficosService:
             params_dist = {"a": 0.0, "b": 1.0, "mu": 0.0, "sigma": 1.0}
 
         if tipo == "Histograma":
-            rango = GraficosService._obtener_rango_histograma(seq, metodo, params_dist)
-            plt.figure(figsize=(9, 5))
-            plt.hist(seq, bins=30, range=rango, color="steelblue", edgecolor="black")
-            plt.title(f"Histograma - {corrida}")
-            plt.xlabel("Ri")
-            plt.ylabel("Frecuencia")
-            plt.grid(alpha=0.3)
-            plt.tight_layout()
-            plt.show()
+            if metodo == "Distribucion Normal":
+                intervalos, frecuencias = GraficosService._calcular_intervalos_frecuencias(
+                    seq,
+                    cantidad_intervalos=30,
+                )
+                ancho_intervalo = 1.0
+                if len(intervalos) > 1:
+                    ancho_intervalo = intervalos[1] - intervalos[0]
+
+                plt.figure(figsize=(9, 5))
+                plt.bar(
+                    intervalos,
+                    frecuencias,
+                    width=ancho_intervalo,
+                    align="edge",
+                    color="steelblue",
+                    edgecolor="black",
+                )
+                plt.title(f"Histograma - {corrida}")
+                plt.xlabel("Ri")
+                plt.ylabel("Frecuencia")
+                plt.grid(alpha=0.3)
+                plt.tight_layout()
+                plt.show()
+            else:
+                rango = GraficosService._obtener_rango_histograma(seq, metodo, params_dist)
+                plt.figure(figsize=(9, 5))
+                plt.hist(seq, bins=30, range=rango, color="steelblue", edgecolor="black")
+                plt.title(f"Histograma - {corrida}")
+                plt.xlabel("Ri")
+                plt.ylabel("Frecuencia")
+                plt.grid(alpha=0.3)
+                plt.tight_layout()
+                plt.show()
             return
 
         seq_validacion = GraficosService._transformar_seq_para_validacion(
