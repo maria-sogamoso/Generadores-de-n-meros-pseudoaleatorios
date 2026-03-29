@@ -175,11 +175,15 @@ def graficar_prueba_poker(numeros_aleatorios):
     dict
         Frecuencias observadas/esperadas por categoria.
     """
+    escala = 100000
+    poker_enteros = [int(float(num) * escala) for num in numeros_aleatorios]
+    numeros_truncados = [valor / escala for valor in poker_enteros]
+    
     if not numeros_aleatorios:
         raise ValueError("La lista de numeros no puede estar vacia.")
 
     n = len(numeros_aleatorios)
-    poker_numeros = [f"{num:.5f}"[2:] for num in numeros_aleatorios]
+    poker_numeros = [f"{valor:05d}" for valor in poker_enteros]
 
     categorias = [
         "Todos Diferentes",
@@ -207,7 +211,7 @@ def graficar_prueba_poker(numeros_aleatorios):
         observadas[categoria] += 1
 
     esperadas = {categoria: n * probabilidades[categoria] for categoria in categorias}
-    aceptada = bool(PruebaPoker().prueba_poker(numeros_aleatorios))
+    aceptada = bool(PruebaPoker().prueba_poker(numeros_truncados))
 
     x = np.arange(len(categorias))
     ancho = 0.38
