@@ -5,7 +5,26 @@ import numpy as np
 
 from validadores.prueba_chi_cuadrado import PruebaChiCuadrado
 from validadores.prueba_kolmogorov_smirnov import PruebaKolmogorovSmirnov
+from validadores.prueba_poker import PruebaPoker
 from validadores.prueba_rachas import PruebaRachas
+
+
+def _agregar_etiqueta_resultado(ax, aceptada):
+    """Dibuja una etiqueta de resultado (aceptada/rechazada) en el eje."""
+    texto = "Prueba aceptada" if aceptada else "Prueba rechazada"
+    color = "green" if aceptada else "red"
+    ax.text(
+        0.02,
+        0.95,
+        texto,
+        transform=ax.transAxes,
+        ha="left",
+        va="top",
+        fontsize=11,
+        fontweight="bold",
+        color=color,
+        bbox={"boxstyle": "round,pad=0.25", "facecolor": "white", "edgecolor": color, "alpha": 0.85},
+    )
 
 
 def graficar_kolmogorov_smirnov(numeros_aleatorios, alpha=0.05):
@@ -103,6 +122,7 @@ def graficar_kolmogorov_smirnov(numeros_aleatorios, alpha=0.05):
     ax2.set_ylabel("Diferencia")
     ax2.grid(alpha=0.3)
     ax2.legend(loc="upper right")
+    _agregar_etiqueta_resultado(ax1, aceptada)
 
     plt.tight_layout()
     plt.show()
@@ -187,6 +207,7 @@ def graficar_prueba_poker(numeros_aleatorios):
         observadas[categoria] += 1
 
     esperadas = {categoria: n * probabilidades[categoria] for categoria in categorias}
+    aceptada = bool(PruebaPoker().prueba_poker(numeros_aleatorios))
 
     x = np.arange(len(categorias))
     ancho = 0.38
@@ -215,6 +236,7 @@ def graficar_prueba_poker(numeros_aleatorios):
     plt.ylabel("Frecuencia")
     plt.grid(axis="y", alpha=0.3)
     plt.legend()
+    _agregar_etiqueta_resultado(plt.gca(), aceptada)
     plt.tight_layout()
     plt.show()
 
@@ -285,6 +307,7 @@ def graficar_prueba_rachas(numeros_aleatorios, alpha=0.05):
     plt.ylabel("Cantidad de rachas")
     plt.grid(axis="y", alpha=0.3)
     plt.legend()
+    _agregar_etiqueta_resultado(plt.gca(), aceptada)
     plt.tight_layout()
     plt.show()
 
@@ -420,6 +443,7 @@ def graficar_prueba_medias(sample_means, ci_lower, ci_upper, theoretical_mean=0.
     ax.set_xlim(-1.2, len(experiment_ids) + 2.0)
 
     ax.legend()
+    _agregar_etiqueta_resultado(ax, aceptada)
     plt.tight_layout()
     
     print("\n--- Resumen Medias ---")
@@ -563,6 +587,7 @@ def graficar_prueba_varianza(
     ax.set_xlim(-1.2, len(experiment_ids) + 2.0)
 
     ax.legend()
+    _agregar_etiqueta_resultado(ax, aceptada)
     plt.tight_layout()
     print("\n--- Resumen Varianza ---")
     print(f"Varianza calculada (promedio): {np.mean(sample_variances):.8f}")
@@ -653,6 +678,7 @@ def graficar_prueba_chi_cuadrado(numeros_aleatorios, k=10, alpha=0.05):
     plt.title("Prueba Chi-Cuadrado: Observadas vs Esperadas")
     plt.grid(axis="y", alpha=0.3)
     plt.legend()
+    _agregar_etiqueta_resultado(plt.gca(), aceptada)
     plt.tight_layout()
     plt.show()
 
