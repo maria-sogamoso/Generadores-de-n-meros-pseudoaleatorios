@@ -27,8 +27,8 @@ class App(ttk.Window):
         Diccionario de corridas con secuencias Ri truncadas.
     corridas_info : dict[str, tuple[str, object, list[float]]]
         Metadata por corrida: metodo, semilla y secuencia.
-    corridas_var : tk.IntVar
-        Variable enlazada al numero de corridas.
+    corridas_var : tk.StringVar
+        Variable enlazada al numero de corridas (opcional, por defecto 1).
     """
 
     def __init__(self):
@@ -40,7 +40,7 @@ class App(ttk.Window):
         self.semillas_archivo = []
         self.secuencias = {}
         self.corridas_info = {}
-        self.corridas_var = tk.IntVar(value=30)
+        self.corridas_var = tk.StringVar(value="1")
 
         self.semillas_service = SemillasService()
         self.generacion_service = GeneracionService()
@@ -195,7 +195,7 @@ class App(ttk.Window):
         self.entry_m = ttk.Entry(params_frame, textvariable=self.m_var, width=14)
         self.entry_m.grid(row=3, column=1, sticky="w")
 
-        self.lbl_corridas = ttk.Label(params_frame, text="Corridas:")
+        self.lbl_corridas = ttk.Label(params_frame, text="Corridas (opcional):")
         self.lbl_corridas.grid(row=4, column=0, sticky="w", pady=5)
         self.entry_corridas = ttk.Entry(
             params_frame,
@@ -418,12 +418,35 @@ class App(ttk.Window):
         return semillas
 
     def _actualizar_estado_corridas(self):
-        """Controla visibilidad del parametro de corridas segun pruebas activas."""
-        requiere_corridas = (
-            self.pruebas_vars["Medias"].get()
-            or self.pruebas_vars["Varianza"].get()
-        )
-        self._set_visibilidad_parametro(self.lbl_corridas, self.entry_corridas, requiere_corridas)
+        """Mantiene visible el parametro de corridas como opcional."""
+        self._set_visibilidad_parametro(self.lbl_corridas, self.entry_corridas, True)
+
+    def _obtener_total_corridas(self):
+        """Obtiene la cantidad de corridas desde el campo opcional.
+
+        Returns
+        -------
+        int
+            Numero de corridas. Si el campo esta vacio, retorna 1.
+
+        Raises
+        ------
+        ValueError
+            Si el valor no es un entero positivo.
+        """
+        texto_corridas = self.corridas_var.get().strip()
+        if not texto_corridas:
+            return 1
+
+        try:
+            total_corridas = int(texto_corridas)
+        except ValueError as e:
+            raise ValueError("Corridas debe ser un numero entero.") from e
+
+        if total_corridas <= 0:
+            raise ValueError("Corridas debe ser mayor a 0.")
+
+        return total_corridas
 
     def _actualizar_estado_distribuciones(self):
         """Sincroniza estado de metodos de distribucion y sus parametros."""
@@ -592,17 +615,7 @@ class App(ttk.Window):
                     "Para usar distribuciones debes seleccionar al menos un generador base."
                 )
 
-            requiere_corridas = (
-                self.pruebas_vars["Medias"].get()
-                or self.pruebas_vars["Varianza"].get()
-            )
-            total_corridas = self.corridas_var.get() if requiere_corridas else 1
-            if total_corridas <= 0:
-                raise ValueError("Corridas debe ser mayor a 0.")
-            if requiere_corridas and total_corridas < 2:
-                raise ValueError(
-                    "Para Medias/Varianza debes usar al menos 2 corridas."
-                )
+            total_corridas = self._obtener_total_corridas()
 
             for i in self.tabla_seq.get_children():
                 self.tabla_seq.delete(i)
