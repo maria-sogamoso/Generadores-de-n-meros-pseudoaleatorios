@@ -9,7 +9,7 @@ class PruebaKolmogorovSmirnov:
     de una distribución uniforme U(0,1) usando la mayor diferencia (D-max).
     """
 
-    def prueba_kolmogorov_smirnov(self, numeros_aleatorios, alpha=0.05):
+    def prueba_kolmogorov_smirnov(self, numeros_aleatorios, alpha=0.05, return_detalle=False):
         """
         Ejecuta prueba Kolmogorov-Smirnov sobre una secuencia.
 
@@ -22,12 +22,19 @@ class PruebaKolmogorovSmirnov:
 
         Returns
         -------
-        bool
-            True si D-max < D-crítico, False en caso contrario.
+        bool | dict
+            True/False si return_detalle=False.
+            Diccionario con métricas de la prueba si return_detalle=True.
         """
         n = len(numeros_aleatorios)
         if n == 0:
             print("No se pueden realizar pruebas con una lista vacía.")
+            if return_detalle:
+                return {
+                    "d_max": 0.0,
+                    "d_critico": 0.0,
+                    "aceptada": False,
+                }
             return False
 
         if not (0.0 < alpha < 1.0):
@@ -60,6 +67,15 @@ class PruebaKolmogorovSmirnov:
         print(f"  D-Max calculado: {d_max:.5f}")
         print(f"  D-Teórico (D-alfa): {d_critico:.5f}")
         print(f"  Resultado: {'Aceptada' if aceptada else 'Rechazada'}")
+
+        if return_detalle:
+            return {
+                "d_mas": float(d_mas),
+                "d_menos": float(d_menos),
+                "d_max": float(d_max),
+                "d_critico": float(d_critico),
+                "aceptada": bool(aceptada),
+            }
 
         return aceptada
 

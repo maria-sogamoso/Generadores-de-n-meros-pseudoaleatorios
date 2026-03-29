@@ -10,7 +10,7 @@ class PruebaRachas:
     Detecta patrones no aleatorios en la secuencia.
     """
 
-    def prueba_rachas(self, numeros_aleatorios, alpha=0.05):
+    def prueba_rachas(self, numeros_aleatorios, alpha=0.05, return_detalle=False):
         """
         Ejecuta prueba de Rachas sobre una secuencia.
 
@@ -23,12 +23,22 @@ class PruebaRachas:
 
         Returns
         -------
-        bool
-            True si Z está dentro del rango de aceptación, False en caso contrario.
+        bool | dict
+            True/False si return_detalle=False.
+            Diccionario con métricas de la prueba si return_detalle=True.
         """
         n = len(numeros_aleatorios)
         if n < 2:
             print("Se requieren al menos 2 datos para prueba de rachas.")
+            if return_detalle:
+                return {
+                    "rachas_observadas": 0,
+                    "rachas_esperadas": 0.0,
+                    "rachas_min": 0.0,
+                    "rachas_max": 0.0,
+                    "z_estadistico": 0.0,
+                    "aceptada": False,
+                }
             return False
 
         if not (0.0 < alpha < 1.0):
@@ -49,6 +59,15 @@ class PruebaRachas:
             print("Prueba de Rachas: Rechazada")
             print("  Todos los valores quedaron del mismo lado de 0.5.")
             print(f"Total muestras: {n}")
+            if return_detalle:
+                return {
+                    "rachas_observadas": 1,
+                    "rachas_esperadas": 0.0,
+                    "rachas_min": 0.0,
+                    "rachas_max": 0.0,
+                    "z_estadistico": 0.0,
+                    "aceptada": False,
+                }
             return False
 
         rachas_totales = 1
@@ -64,6 +83,15 @@ class PruebaRachas:
             print("Prueba de Rachas: Rechazada")
             print("  Varianza de rachas no positiva.")
             print(f"Total muestras: {n}")
+            if return_detalle:
+                return {
+                    "rachas_observadas": int(rachas_totales),
+                    "rachas_esperadas": float(media_rachas),
+                    "rachas_min": float(media_rachas),
+                    "rachas_max": float(media_rachas),
+                    "z_estadistico": 0.0,
+                    "aceptada": False,
+                }
             return False
 
         z_estadistico = (rachas_totales - media_rachas) / math.sqrt(varianza_rachas)
@@ -71,8 +99,21 @@ class PruebaRachas:
         z_teorico = self._normal_inv_cdf(1.0 - alpha / 2.0)
         rango_min = -z_teorico
         rango_max = z_teorico
+        rachas_min = media_rachas + rango_min * math.sqrt(varianza_rachas)
+        rachas_max = media_rachas + rango_max * math.sqrt(varianza_rachas)
+        aceptada = rango_min <= z_estadistico <= rango_max
 
-        if rango_min <= z_estadistico <= rango_max:
+        if return_detalle:
+            return {
+                "rachas_observadas": int(rachas_totales),
+                "rachas_esperadas": float(media_rachas),
+                "rachas_min": float(rachas_min),
+                "rachas_max": float(rachas_max),
+                "z_estadistico": float(z_estadistico),
+                "aceptada": bool(aceptada),
+            }
+
+        if aceptada:
             print("Prueba de Rachas: Aceptada")
             print(f"  Z estadístico: {z_estadistico:.4f}")
             print(f"  Rango aceptable: [{rango_min:.4f}, {rango_max:.4f}]")

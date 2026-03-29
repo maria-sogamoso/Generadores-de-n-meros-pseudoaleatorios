@@ -10,7 +10,7 @@ class PruebaChiCuadrado:
     Usa distribución chi-cuadrado con k-1 grados de libertad y α = 0.05.
     """
 
-    def prueba_chi_cuadrado(self, numeros_aleatorios, k=1000):
+    def prueba_chi_cuadrado(self, numeros_aleatorios, k=1000, alpha=0.05, return_detalle=False):
         """
         Ejecuta la prueba Chi-Cuadrado sobre una secuencia.
 
@@ -20,24 +20,51 @@ class PruebaChiCuadrado:
             Secuencia U(0,1) a validar.
         k : int, optional
             Número de intervalos para dividir [0, 1). Por defecto 1000.
+        alpha : float, optional
+            Nivel de significancia. Por defecto 0.05.
 
         Returns
         -------
-        bool
-            True si la prueba es aceptada, False si es rechazada.
+        bool | dict
+            True/False si return_detalle=False.
+            Diccionario con métricas de la prueba si return_detalle=True.
         """
         n = len(numeros_aleatorios)
         if n == 0:
             print("No se pueden realizar pruebas con una lista vacía.")
+            if return_detalle:
+                return {
+                    "chi_calculado": 0.0,
+                    "chi_critico": 0.0,
+                    "aceptada": False,
+                    "frecuencias_observadas": [],
+                    "frecuencias_esperadas": [],
+                }
             return False
 
         if k <= 1:
             print("k debe ser mayor que 1.")
+            if return_detalle:
+                return {
+                    "chi_calculado": 0.0,
+                    "chi_critico": 0.0,
+                    "aceptada": False,
+                    "frecuencias_observadas": [],
+                    "frecuencias_esperadas": [],
+                }
             return False
 
         frecuencia_esperada = n / k
         if frecuencia_esperada == 0:
             print("Frecuencia esperada inválida.")
+            if return_detalle:
+                return {
+                    "chi_calculado": 0.0,
+                    "chi_critico": 0.0,
+                    "aceptada": False,
+                    "frecuencias_observadas": [],
+                    "frecuencias_esperadas": [],
+                }
             return False
 
         frecuencias_observadas = self._histograma_manual(numeros_aleatorios, k)
@@ -46,11 +73,24 @@ class PruebaChiCuadrado:
         for fo in frecuencias_observadas:
             chi_cuadrado_calculado += (fo - frecuencia_esperada) ** 2 / frecuencia_esperada
 
-        alpha = 0.05
+        if not (0.0 < alpha < 1.0):
+            raise ValueError("alpha debe estar en (0,1).")
+
         grados_libertad = k - 1
         chi_cuadrado_teorico = self._chi2_ppf_aprox(1.0 - alpha, grados_libertad)
+        frecuencias_esperadas = [frecuencia_esperada] * k
+        aceptada = chi_cuadrado_calculado < chi_cuadrado_teorico
 
-        if chi_cuadrado_calculado < chi_cuadrado_teorico:
+        if return_detalle:
+            return {
+                "chi_calculado": float(chi_cuadrado_calculado),
+                "chi_critico": float(chi_cuadrado_teorico),
+                "aceptada": bool(aceptada),
+                "frecuencias_observadas": [int(v) for v in frecuencias_observadas],
+                "frecuencias_esperadas": [float(v) for v in frecuencias_esperadas],
+            }
+
+        if aceptada:
             print("Prueba de chi-cuadrado: Aceptada")
             print(f"  Chi-cuadrado calculado: {chi_cuadrado_calculado:.8f}")
             print(f"  Chi-cuadrado teórico: {chi_cuadrado_teorico:.8f}")
