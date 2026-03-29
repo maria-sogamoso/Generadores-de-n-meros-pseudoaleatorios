@@ -155,6 +155,18 @@ class App(ttk.Window):
             self.chk_distribuciones.append(chk)
             row += 1
 
+        self.base_distribucion_var = tk.StringVar(value="")
+        self.lbl_base_dist = ttk.Label(dist_frame, text="Generador base:")
+        self.lbl_base_dist.grid(row=row, column=0, sticky="w", padx=6, pady=(8, 2))
+        row += 1
+        self.combo_base_dist = ttk.Combobox(
+            dist_frame,
+            textvariable=self.base_distribucion_var,
+            state="readonly",
+            width=28,
+        )
+        self.combo_base_dist.grid(row=row, column=0, sticky="we", padx=6, pady=(0, 2))
+
         right_column = ttk.Frame(config_frame)
         right_column.pack(side="right", fill="both", expand=True, padx=(5, 0))
 
@@ -418,18 +430,28 @@ class App(ttk.Window):
         hay_base = any(var.get() for var in self.metodos_vars.values())
         usa_uniforme = self.metodos_distribucion_vars["Distribucion Uniforme"].get()
         usa_normal = self.metodos_distribucion_vars["Distribucion Normal"].get()
+        usa_distribucion = usa_uniforme or usa_normal
 
         if not hay_base:
             for var in self.metodos_distribucion_vars.values():
                 var.set(False)
             usa_uniforme = False
             usa_normal = False
+            usa_distribucion = False
 
         for chk in self.chk_distribuciones:
             if hay_base:
                 chk.configure(state="normal")
             else:
                 chk.configure(state="disabled")
+
+        self._actualizar_opciones_base_distribucion()
+        self._set_visibilidad_parametro(self.lbl_base_dist, self.combo_base_dist, usa_distribucion)
+
+        if hay_base:
+            self.combo_base_dist.configure(state="readonly")
+        else:
+            self.combo_base_dist.configure(state="disabled")
 
         self._set_visibilidad_parametro(self.lbl_u_a, self.entry_u_a, usa_uniforme)
         self._set_visibilidad_parametro(self.lbl_u_b, self.entry_u_b, usa_uniforme)
@@ -446,7 +468,22 @@ class App(ttk.Window):
         self._set_visibilidad_parametro(self.lbl_digitos, self.entry_digitos, usa_cuadrados)
         self._set_visibilidad_parametro(self.lbl_a_mult, self.entry_a_mult, usa_multiplicativo)
         self._set_visibilidad_parametro(self.lbl_m, self.entry_m, usa_m)
+        self._actualizar_opciones_base_distribucion()
         self._actualizar_estado_distribuciones()
+
+    def _actualizar_opciones_base_distribucion(self):
+        """Sincroniza opciones del combo de base para transformaciones."""
+        metodos_base = [m for m, v in self.metodos_vars.items() if v.get()]
+        valor_actual = self.base_distribucion_var.get()
+
+        self.combo_base_dist["values"] = metodos_base
+
+        if not metodos_base:
+            self.base_distribucion_var.set("")
+            return
+
+        if valor_actual not in metodos_base:
+            self.base_distribucion_var.set(metodos_base[0])
 
     @staticmethod
     def _set_visibilidad_parametro(label_widget, entry_widget, visible):
@@ -530,17 +567,9 @@ class App(ttk.Window):
             Resultado de pruebas con detalle por prueba.
         """
         pruebas = [p for p, v in self.pruebas_vars.items() if v.get()]
-        params_dist = {
-            "a": self.uniforme_a_var.get(),
-            "b": self.uniforme_b_var.get(),
-            "mu": self.normal_mu_var.get(),
-            "sigma": self.normal_sigma_var.get(),
-        }
         return self.validacion_service.ejecutar_pruebas(
             seq,
             pruebas,
-            metodo=metodo,
-            params_dist=params_dist,
         )
 
     def _ejecutar(self):
@@ -582,7 +611,7 @@ class App(ttk.Window):
             self.secuencias.clear()
             self.corridas_info.clear()
 
-            corridas_totales = {}
+            corridas_base = {}
 
             for metodo in metodos:
                 corridas = self._generar_por_metodo(
@@ -591,21 +620,12 @@ class App(ttk.Window):
                     pasos,
                     corridas=total_corridas,
                 )
-                corridas_totales.update(corridas)
+                corridas_base.update(corridas)
 
-            if metodos_distribucion:
-                corridas_dist = self.generacion_service.generar_distribuciones_desde_bases(
-                    corridas_base=corridas_totales,
-                    incluir_uniforme="Distribucion Uniforme" in metodos_distribucion,
-                    incluir_normal="Distribucion Normal" in metodos_distribucion,
-                    a=self.uniforme_a_var.get(),
-                    b=self.uniforme_b_var.get(),
-                    mu=self.normal_mu_var.get(),
-                    sigma=self.normal_sigma_var.get(),
-                )
-                corridas_totales.update(corridas_dist)
+            corridas_totales = dict(corridas_base)
 
-            for corrida, (met, sem, seq) in corridas_totales.items():
+            # 1) Generar y validar solo corridas base.
+            for corrida, (met, sem, seq) in corridas_base.items():
                 seq_truncada = self._truncar_ri_5(seq)
                 self.secuencias[corrida] = seq_truncada
                 self.corridas_info[corrida] = (met, sem, seq_truncada)
@@ -619,6 +639,48 @@ class App(ttk.Window):
                         "", "end",
                         values=(corrida, prueba, "Aceptada" if ok else "Rechazada", detalle)
                     )
+
+            corridas_dist = {}
+            if metodos_distribucion:
+                metodo_base_dist = self.base_distribucion_var.get().strip()
+                if not metodo_base_dist:
+                    raise ValueError(
+                        "Selecciona un generador base para aplicar las distribuciones."
+                    )
+                if metodo_base_dist not in metodos:
+                    raise ValueError(
+                        "El generador base seleccionado para distribuciones no está activo."
+                    )
+
+                corridas_base_dist = {
+                    key: val
+                    for key, val in corridas_base.items()
+                    if val[0] == metodo_base_dist
+                }
+                if not corridas_base_dist:
+                    raise ValueError(
+                        "No se encontraron corridas del generador base seleccionado para aplicar distribuciones."
+                    )
+
+                corridas_dist = self.generacion_service.generar_distribuciones_desde_bases(
+                    corridas_base=corridas_base_dist,
+                    incluir_uniforme="Distribucion Uniforme" in metodos_distribucion,
+                    incluir_normal="Distribucion Normal" in metodos_distribucion,
+                    a=self.uniforme_a_var.get(),
+                    b=self.uniforme_b_var.get(),
+                    mu=self.normal_mu_var.get(),
+                    sigma=self.normal_sigma_var.get(),
+                )
+                corridas_totales.update(corridas_dist)
+
+            # 2) Agregar corridas transformadas sin pruebas.
+            for corrida, (met, sem, seq) in corridas_dist.items():
+                seq_truncada = self._truncar_ri_5(seq)
+                self.secuencias[corrida] = seq_truncada
+                self.corridas_info[corrida] = (met, sem, seq_truncada)
+
+                for i, ri in enumerate(seq_truncada, start=1):
+                    self.tabla_seq.insert("", "end", values=(corrida, met, sem, i, f"{ri:.5f}"))
 
             self.combo_corrida["values"] = list(self.secuencias.keys())
             if self.secuencias:
@@ -641,8 +703,17 @@ class App(ttk.Window):
             return
 
         tipo = self.combo_grafico.get()
+        metodo = self.corridas_info.get(corrida, (None, None, None))[0]
+        es_distribucion = metodo in ("Distribucion Uniforme", "Distribucion Normal")
 
         if tipo != "Histograma":
+            if es_distribucion:
+                messagebox.showwarning(
+                    "Grafico",
+                    "Las pruebas solo aplican a corridas de generadores base."
+                )
+                return
+
             var_prueba = self.pruebas_vars.get(tipo)
             if var_prueba is None or not var_prueba.get():
                 messagebox.showwarning(
@@ -651,7 +722,6 @@ class App(ttk.Window):
                 )
                 return
 
-        metodo = self.corridas_info.get(corrida, (None, None, None))[0]
         params_dist = {
             "a": self.uniforme_a_var.get(),
             "b": self.uniforme_b_var.get(),
